@@ -38,7 +38,7 @@ class IoBox(QGroupBox):
         if self._box_type == IoBoxType.INPUT:
             self._action_btn.setText('Load')
         else:
-            self._action_btn.setText('Save')
+            self._action_btn.setText('Save As')
 
         self._open_btn = QPushButton()
         self._open_btn.setText('Open')
