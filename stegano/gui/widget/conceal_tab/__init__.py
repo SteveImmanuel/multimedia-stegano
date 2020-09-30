@@ -4,9 +4,9 @@ from stegano.gui.widget.encrypt_config import EncryptConfig
 from stegano.gui.widget.io_box import IoBox, IoBoxType
 
 
-class EncryptTab(QWidget):
+class ConcealTab(QWidget):
     def __init__(self):
-        super(EncryptTab, self).__init__()
+        super(ConcealTab, self).__init__()
 
         self._setup_ui()
 

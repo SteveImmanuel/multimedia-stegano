@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow, QTabWidget
 
-from stegano.gui.widget.encrypt_tab import EncryptTab
+from stegano.gui.widget.conceal_tab import ConcealTab
 
 
 class MainWindow(QMainWindow):
@@ -12,11 +12,11 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Stagenography')
         self.setMinimumSize(500, 600)
 
-        self._encrypt_tab = EncryptTab()
-        self._decrypt_tab = EncryptTab()
+        self._conceal_tab = ConcealTab()
+        self._extract_tab = ConcealTab()
 
         self._tab_bar = QTabWidget()
-        self._tab_bar.addTab(self._encrypt_tab, 'Encrypt')
-        self._tab_bar.addTab(self._decrypt_tab, 'Decrypt')
+        self._tab_bar.addTab(self._conceal_tab, 'Conceal')
+        self._tab_bar.addTab(self._extract_tab, 'Extract')
 
         self.setCentralWidget(self._tab_bar)
