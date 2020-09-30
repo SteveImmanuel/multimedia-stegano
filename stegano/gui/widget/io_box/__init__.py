@@ -1,3 +1,4 @@
+from enum import Enum
 from os import path
 
 from PyQt5.QtCore import QDir, QUrl
@@ -6,20 +7,23 @@ from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QLineEdit, \
     QPushButton, QHBoxLayout, QLabel, QFileDialog
 
 
+class IoBoxType(Enum):
+    INPUT = 'input'
+    OUTPUT = 'output'
+
+
 class IoBox(QGroupBox):
-    def __init__(self, is_input: bool = True):
+    def __init__(self, box_type: IoBoxType = IoBoxType.INPUT, title: str = 'Input'):
         super(IoBox, self).__init__()
-        self._is_input = is_input
+        self._box_type = box_type
+        self._title = title
 
         self._file_loaded = False
 
         self._setup_ui()
 
     def _setup_ui(self):
-        if self._is_input:
-            self.setTitle('Input')
-        else:
-            self.setTitle('Output')
+        self.setTitle(self._title)
 
         self._path_label = QLabel()
         self._path_label.setText('File path : ')
@@ -31,7 +35,7 @@ class IoBox(QGroupBox):
         self._path_input_layout.addWidget(self._file_path)
 
         self._action_btn = QPushButton()
-        if self._is_input:
+        if self._box_type == IoBoxType.INPUT:
             self._action_btn.setText('Load')
         else:
             self._action_btn.setText('Save')
@@ -65,17 +69,16 @@ class IoBox(QGroupBox):
         self._set_button_state()
 
     def _on_action_btn(self):
-        if self._is_input:
+        if self._box_type == IoBoxType.INPUT:
             filepath, _ = QFileDialog.getOpenFileName(self, 'Load file', QDir.currentPath(), '')
-            if filepath:
-                self._file_path.setText(filepath)
         else:
             filepath, _ = QFileDialog.getSaveFileName(self, 'Save file', QDir.currentPath(), '')
-            if filepath:
-                self._file_path.setText(filepath)
+
+        if filepath:
+            self._file_path.setText(filepath)
 
     def _set_button_state(self):
-        if not self._is_input:
+        if self._box_type == IoBoxType.OUTPUT:
             self._action_btn.setEnabled(self._file_loaded)
 
         self._open_btn.setEnabled(self._file_loaded)
