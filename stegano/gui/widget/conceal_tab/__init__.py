@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
+from stegano.gui.widget.conceal_tab.summary_box import SummaryBox
 from stegano.gui.widget.encrypt_config import EncryptConfig
 from stegano.gui.widget.io_box import InputBox, OutputBox
 
@@ -14,6 +15,7 @@ class ConcealTab(QWidget):
         self._file_input_box = InputBox('Input file')
         self._message_input_box = InputBox('Message file')
         self._encrypt_config_box = EncryptConfig()
+        self._summary_box = SummaryBox()
         self._file_output_box = OutputBox('Output file')
 
         self._input_layout = QHBoxLayout()
@@ -25,6 +27,7 @@ class ConcealTab(QWidget):
 
         self._main_layout = QVBoxLayout()
         self._main_layout.addLayout(self._input_layout)
+        self._main_layout.addWidget(self._summary_box)
         self._main_layout.addWidget(self._encrypt_config_box)
         self._main_layout.addWidget(self._do_btn)
         self._main_layout.addWidget(self._file_output_box)
