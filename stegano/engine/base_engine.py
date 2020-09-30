@@ -12,21 +12,16 @@ class BaseEngine(ABC):
         # TODO: validation
         self._extract(file_in_path, extract_file_path)
 
-    @property
-    def conceal_option(self) -> List[Dict[str, str]]:
+    @staticmethod
+    @abstractmethod
+    def get_conceal_option(self) -> List[Dict[str, str]]:
         # Return list of dict, each dict value will be used ad the option label
+        pass
         return self._get_conceal_option()
 
+    @staticmethod
     @abstractmethod
-    def _get_conceal_option(self) -> List[Dict[str, str]]:
-        pass
-
-    @property
-    def supported_extensions(self) -> List[str]:
-        return self._get_supported_extensions()
-
-    @abstractmethod
-    def _get_supported_extensions(self) -> List[str]:
+    def get_supported_extensions(self) -> List[str]:
         pass
 
     @abstractmethod
