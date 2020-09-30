@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QTabWidget
 
 from stegano.gui.widget.conceal_tab import ConcealTab
+from stegano.gui.widget.extract_tab import ExtractTab
 
 
 class MainWindow(QMainWindow):
@@ -13,7 +14,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(500, 600)
 
         self._conceal_tab = ConcealTab()
-        self._extract_tab = ConcealTab()
+        self._extract_tab = ExtractTab()
 
         self._tab_bar = QTabWidget()
         self._tab_bar.addTab(self._conceal_tab, 'Conceal')
