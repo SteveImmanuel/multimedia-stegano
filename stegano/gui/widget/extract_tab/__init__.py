@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
 
-from stegano.gui.widget.io_box import IoBox, IoBoxType
+from stegano.gui.widget.io_box import InputBox, OutputBox
 
 
 class ExtractTab(QWidget):
@@ -10,8 +10,8 @@ class ExtractTab(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self._file_input_box = IoBox(IoBoxType.INPUT, 'Input file')
-        self._file_output_box = IoBox(IoBoxType.OUTPUT, 'Output file')
+        self._file_input_box = InputBox('Input file')
+        self._file_output_box = OutputBox('Output file')
 
         self._do_btn = QPushButton()
         self._do_btn.setText('Extract')
