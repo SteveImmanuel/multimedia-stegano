@@ -20,7 +20,7 @@ class DummyEngine(BaseEngine):
         return filepath.endswith('txt') and filepath.startswith('text')
 
     def get_max_message(self, filepath) -> int:
-        return 1
+        return 100000
 
     def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
         pass

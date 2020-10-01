@@ -2,7 +2,7 @@ from os import path
 
 from PyQt5.QtCore import QUrl, QDir
 from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QGroupBox, QVBoxLayout, QHBoxLayout, QPushButton, QFileDialog, QLineEdit
 
 from stegano.gui.widget.io_box.path_input import PathInput
 
@@ -42,17 +42,21 @@ class InputBox(QGroupBox):
 
         self._browse_btn.clicked.connect(self._on_browse_btn)
         self._open_btn.clicked.connect(self._on_open_btn)
+        self._load_btn.clicked.connect(self._on_load_btn)
         self._path_input.path_input.textChanged.connect(self._on_path_changed)
 
         self._set_button_state()
 
     @property
-    def load_btn(self):
+    def load_btn(self) -> QPushButton:
         return self._load_btn
 
     @property
-    def path_input(self):
+    def path_input(self) -> QLineEdit:
         return self._path_input.path_input
+
+    def _on_load_btn(self):
+        self._load_btn.setEnabled(False)
 
     def _on_open_btn(self):
         file_url = QUrl.fromLocalFile(self._path_input.path_input.text())
