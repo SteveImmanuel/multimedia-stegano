@@ -32,7 +32,10 @@ class BaseEngine(ABC):
         pass
 
     @abstractmethod
-    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
+    def _conceal(self, file_in_path: str, message_file_path: str, file_out_path: str,
+                 encryption_key: str,
+                 config: List[str]):
+        # Encryption key will be filled with empty string if encryption is disabled
         pass
 
     @abstractmethod

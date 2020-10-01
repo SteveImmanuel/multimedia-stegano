@@ -22,8 +22,9 @@ class DummyEngine(BaseEngine):
     def get_max_message(self, filepath) -> int:
         return 100000
 
-    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
-        pass
+    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str,
+                 encryption_key: str, config: List[str]):
+        print('Doing concealment with param {}'.format(config))
 
     def _extract(self, file_in_path: str, extract_file_path: str):
         pass
