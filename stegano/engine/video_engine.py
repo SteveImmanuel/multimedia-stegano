@@ -41,7 +41,7 @@ class VideoEngine(BaseEngine):
         vid_cap.release()
         return filepath.endswith('.avi') and is_opened
 
-    def get_max_message(self, filepath: str) -> int:
+    def get_max_message(filepath: str) -> int:
         vid_cap = cv2.VideoCapture(filepath)
 
         if not vid_cap.isOpened():
@@ -61,10 +61,9 @@ class VideoEngine(BaseEngine):
         vid_cap.release()
         return max_message_size
 
-    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str,
-                 encryption_key: str, config: List[str]):
+    def conceal(file_in_path: str, secret_file_path: str, file_out_path: str, encryption_key: str,
+                config: List[str]):
         start = datetime.datetime.now()
-        self.check_key(encryption_key)
 
         input_handle = open(secret_file_path, 'rb')
         input_handle.seek(0, os.SEEK_END)
@@ -73,31 +72,23 @@ class VideoEngine(BaseEngine):
         writer = skvideo.io.FFmpegWriter(
             file_out_path,
             outputdict={
-                '-vcodec': 'libx264',  #use the h.264 codec
+                '-vcodec': 'libx264rgb',  #use the h.264 codec
                 '-crf': '0',
                 '-preset': 'veryslow',
-                '-r': '30'
             })
         print(file_size)
 
-        vid_cap = cv2.VideoCapture(file_in_path)
-        assert vid_cap.isOpened()
+        videogen = skvideo.io.FFmpegReader(file_in_path)
 
-        fourcc = cv2.VideoWriter_fourcc(*'FFV1')
-        # out_writer = cv2.VideoWriter(file_out_path, fourcc, vid_cap.get(5),
-        #                              (int(vid_cap.get(3)), int(vid_cap.get(4))), True)
+        shape = videogen.getShape()
 
-        ret, frame = vid_cap.read()
-        assert ret
-
-        frame_dim = frame.shape
-        frame_count = vid_cap.get(7)
+        frame_dim = shape[1:]
+        frame_count = shape[0]
         max_stego_size = np.prod(frame_dim) * frame_count
         meta_data_len = FileUtil.get_metadata_len(max_stego_size)
         meta_data_len += 3  # 3 bit for 3 option
         ext = file_in_path.split('.')[-1]
 
-        shape = [int(frame_count)] + [i for i in frame_dim]
         min_pos = np.unravel_index(meta_data_len, shape)
 
         meta_data = FileUtil.gen_metadata(file_size, max_stego_size, ext)
@@ -105,15 +96,12 @@ class VideoEngine(BaseEngine):
         sequence = RandomUtil.get_random_sequence(min_pos, shape, file_size * 8, seed)
         # sequence = [(np.unravel_index(i, shape), i) for i in range(file_size * 8)]
 
-        vid_cap.set(1, 0)  # set next frame to 0
         current_frame = 0
         squence_idx = 0
         pos, idx = sequence[squence_idx]
         count = 0
-        while vid_cap.isOpened():
-            ret, frame = vid_cap.read()
-            if not ret:  # end file
-                break
+        for read_frame in videogen.nextFrame():
+            frame = read_frame.copy()
 
             # TODO handle meta data
 
@@ -125,8 +113,16 @@ class VideoEngine(BaseEngine):
                 the_byte = input_handle.read(1)
                 the_bit = ord(the_byte) >> (7 - bit_pos) & 1
 
-                frame[pos[1:]] &= 254
-                frame[pos[1:]] |= the_bit
+                the_channel = pos[-1]
+                if pos[-1] == 0:
+                    the_channel = 2
+                elif pos[-1] == 2:
+                    the_channel = 0
+
+                the_pos = (pos[1], pos[2], the_channel)
+
+                frame[the_pos] &= 254
+                frame[the_pos] |= the_bit
 
                 squence_idx += 1
                 count += 1
@@ -136,27 +132,23 @@ class VideoEngine(BaseEngine):
                 pos, idx = sequence[squence_idx]
                 frame_pos = pos[0]
 
-            # out_writer.write(frame)
-            writer.writeFrame(frame[:, :, ::-1])
+            writer.writeFrame(frame)
             current_frame += 1
 
         writer.close()  #close the writer
-        vid_cap.release()
-        # out_writer.release()
         print(datetime.datetime.now() - start)
 
-    def _extract(
-        self,
+    def extract(
         file_in_path: str,
         extract_file_path: str,
         encryption_key: str,
     ):
         start = datetime.datetime.now()
-        self.check_key(encryption_key)
+        # self.check_key(encryption_key)
 
         output_handler = open(extract_file_path, 'wb')
         output_handler.seek(0, os.SEEK_END)
-        file_size = 11
+        file_size = 9
 
         vid_cap = cv2.VideoCapture(file_in_path)
         assert vid_cap.isOpened()
