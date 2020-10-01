@@ -1,6 +1,5 @@
 import os
 import wave
-import math
 
 from typing import List, Dict
 
@@ -8,8 +7,13 @@ from stegano.engine.base_engine import BaseEngine
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
 
+FRAME_SIZE = 500000
+
 
 class AudioEngine(BaseEngine):
+    def __init__(self):
+        super(AudioEngine, self).__init__()
+
     def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
         self.is_encrypt = True
         self.is_random = True
@@ -40,7 +44,7 @@ class AudioEngine(BaseEngine):
         if total_secret_size > max_file_size:
             raise ValueError(f'File too big, max size={max_file_size}, got {total_secret_size}')
 
-        frame_size = min(500000, cover_obj.getnframes())  #1 frame = 4 bytes
+        frame_size = min(FRAME_SIZE, cover_obj.getnframes())  #1 frame = 4 bytes
         frame_bytes = bytearray(list(cover_obj.readframes(frame_size)))
 
         with wave.open(file_out_path, 'wb') as stego:
@@ -91,32 +95,18 @@ class AudioEngine(BaseEngine):
         stego_obj = wave.open(file_in_path, 'rb')
         max_file_size = stego_obj.getnframes() * 4
         metadata_len = FileUtil.get_metadata_len(max_file_size) + 2
-        # print('total frames', max_file_size)
 
-        frame_bytes = bytearray(list(stego_obj.readframes(max_file_size)))
-        # print(bin(frame_bytes[0]))
-
+        frame_bytes = bytearray(list(stego_obj.readframes(metadata_len)))
         metadata = []
         for i in range(metadata_len):
             metadata.append(frame_bytes[i] & 1)
         metadata_len = len(metadata)
-        print()
-        print('extract', metadata)
 
-        # print(metadata)
-        # print(len(metadata))
         is_random = True if metadata.pop() == 1 else False
         is_encrypt = True if metadata.pop() == 1 else False
-
         secret_msg_len, ext = FileUtil.extract_metadata(metadata)
 
-        print('israndom', is_random)
-        print('isencrypt', is_encrypt)
-        print('ext', ext)
-        print('len', secret_msg_len)
-
         if is_random:
-
             seed = RandomUtil.get_seed_from_string(key)
             sequence_index = RandomUtil.get_random_sequence((metadata_len, ), (max_file_size, ),
                                                             secret_msg_len, seed)
@@ -127,41 +117,42 @@ class AudioEngine(BaseEngine):
         else:
             sequence_index = [i + metadata_len for i in range(secret_msg_len)]
 
-        print('extract', sequence_index)
-
         with open(extract_file_path, 'wb') as secret:
             i = 0
             temp_byte = []
             for idx_stego in sequence_index:
-                print(idx_stego)
-                temp_byte.append(frame_bytes[idx_stego] & 1)
+                byte = AudioEngine.get_ith_byte(stego_obj, idx_stego)
+                temp_byte.append(byte & 1)
                 i += 1
+
                 if i == 8:
                     i = 0
-                    # print(temp_byte)
                     byte = bytes([FileUtil.binary_to_dec(temp_byte)])
                     secret.write(byte)
-                    temp_byte = []
+                    temp_byte.clear()
 
     @staticmethod
-    def get_frame_idx(bit: int):
-        return math.ceil(math.ceil(bit // 8) // 2)
+    def get_ith_byte(stego_obj, i: int) -> int:
+        stego_obj.setpos(i // 4)
+        frame_bytes = stego_obj.readframes(1)
+        byte = frame_bytes[i % 4]
+        return byte
 
     @staticmethod
     def get_conceal_option(self) -> List[Dict[str, str]]:
-        # Return list of dict, each dict value will be used ad the option label
-        pass
-        return self._get_conceal_option()
+        return [{'a': 'urutan a', 'b': 'urutan b'}, {'1': 'metode 1', '2': 'metode 2'}]
 
     @staticmethod
     def get_supported_extensions(self) -> List[str]:
-        pass
+        return ['wav']
 
     def check_file_supported(self, filepath: str) -> bool:
-        pass
+        filename, ext = os.path.basename(filepath).split('.')
+        return ext.lower() == 'wav'
 
     def get_max_message(self, filepath: str) -> int:
-        pass
+        cover_obj = wave.open(filepath, 'rb')
+        return cover_obj.getnframes() * 4 // 8
 
 
 if __name__ == "__main__":
