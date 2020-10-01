@@ -8,16 +8,19 @@ from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
 
 FRAME_SIZE = 500000
+CONCEAL_RANDOM = 'conc_rand'
+CONCEAL_SEQ = 'conc_seq'
+ENCRYPT_ON = 'enc_on'
+ENCRYPT_OFF = 'enc_off'
 
 
 class AudioEngine(BaseEngine):
     def __init__(self):
         super(AudioEngine, self).__init__()
 
-    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
-        self.is_encrypt = True
-        self.is_random = True
-        key = 'test123'
+    def _conceal(self, file_in_path: str, message_file_path: str, file_out_path: str,
+                 encryption_key: str, config: List[str]):
+        is_random, is_encrypt = AudioEngine.parse_config(config)
 
         #TODO: convert to wav if file format is wrong or raise exception, await further development
         filename, ext = os.path.basename(file_in_path).split('.')
@@ -25,14 +28,14 @@ class AudioEngine(BaseEngine):
             raise OSError(f'Extension must be .wav, got .{ext}')
 
         cover_obj = wave.open(file_in_path, 'rb')
-        secret_msg_len = os.path.getsize(secret_file_path) * 8  #in bit
+        secret_msg_len = os.path.getsize(message_file_path) * 8  #in bit
         max_file_size = cover_obj.getnframes() * 4  #in bit
 
         metadata = FileUtil.gen_metadata(secret_msg_len, max_file_size, ext)
-        metadata.append(1) if self.is_encrypt else metadata.append(0)
-        if self.is_random:
+        metadata.append(1) if is_encrypt else metadata.append(0)
+        if is_random:
             metadata.append(1)
-            seed = RandomUtil.get_seed_from_string(key)
+            seed = RandomUtil.get_seed_from_string(encryption_key)
             sequence_index = RandomUtil.get_random_sequence((len(metadata), ), (max_file_size, ),
                                                             secret_msg_len, seed)
             sequence_index = list(map(lambda x: (x[0][0], x[1]), sequence_index))
@@ -50,7 +53,7 @@ class AudioEngine(BaseEngine):
         with wave.open(file_out_path, 'wb') as stego:
             stego.setparams(cover_obj.getparams())
 
-            with open(secret_file_path, 'rb') as secret:
+            with open(message_file_path, 'rb') as secret:
                 #set header, format, etc
                 for i in range(len(metadata)):
                     bit = metadata[i]
@@ -85,8 +88,7 @@ class AudioEngine(BaseEngine):
                 stego.writeframes(frame_bytes)
         cover_obj.close()
 
-    def _extract(self, file_in_path: str, extract_file_path: str):
-        key = 'test123'
+    def _extract(self, file_in_path: str, extract_file_path: str, encryption_key: str):
 
         filename, ext = os.path.basename(file_in_path).split('.')
         if ext.lower() != 'wav':
@@ -107,7 +109,7 @@ class AudioEngine(BaseEngine):
         secret_msg_len, ext = FileUtil.extract_metadata(metadata)
 
         if is_random:
-            seed = RandomUtil.get_seed_from_string(key)
+            seed = RandomUtil.get_seed_from_string(encryption_key)
             sequence_index = RandomUtil.get_random_sequence((metadata_len, ), (max_file_size, ),
                                                             secret_msg_len, seed)
             sequence_index = list(map(lambda x: (x[1], x[0][0]), sequence_index))
@@ -139,8 +141,21 @@ class AudioEngine(BaseEngine):
         return byte
 
     @staticmethod
-    def get_conceal_option(self) -> List[Dict[str, str]]:
-        return [{'a': 'urutan a', 'b': 'urutan b'}, {'1': 'metode 1', '2': 'metode 2'}]
+    def get_conceal_option() -> List[Dict[str, str]]:
+        return [{
+            CONCEAL_SEQ: 'Conceal Sequentially',
+            CONCEAL_RANDOM: 'Conceal Randomly'
+        }, {
+            ENCRYPT_ON: 'Encrypt First',
+            ENCRYPT_OFF: 'No Encryption'
+        }]
+
+    @staticmethod
+    def parse_config(config: List[str]) -> List[bool]:
+        res = [None] * 2
+        res[0] = True if config[0] == CONCEAL_RANDOM else False
+        res[1] = True if config[1] == ENCRYPT_ON else False
+        return res
 
     @staticmethod
     def get_supported_extensions(self) -> List[str]:
@@ -159,5 +174,5 @@ if __name__ == "__main__":
     audio_engine = AudioEngine()
     base_path = '/home/steve/Git/multimedia-stegano/stegano/engine'
     audio_engine.conceal(f'{base_path}/dual3.wav', f'{base_path}/sec.txt',
-                         f'{base_path}/testbuffer.wav')
-    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt')
+                         f'{base_path}/testbuffer.wav', 'test123', [CONCEAL_SEQ, ENCRYPT_ON])
+    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
