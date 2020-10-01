@@ -2,14 +2,14 @@ from PyQt5.QtWidgets import QGroupBox, QButtonGroup, QRadioButton, QLineEdit, QV
     QHBoxLayout, QLabel
 
 
-class EncryptConfig(QGroupBox):
+class ConfigBox(QGroupBox):
     def __init__(self):
-        super(EncryptConfig, self).__init__()
+        super(ConfigBox, self).__init__()
 
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setTitle('Encryption Options')
+        self.setTitle('Options')
         self._button_group = QButtonGroup()
         self._button_group_layout = QHBoxLayout()
 
@@ -32,6 +32,7 @@ class EncryptConfig(QGroupBox):
         self._password_entry_label = QLabel()
         self._password_entry_label.setText('Password : ')
         self._password_entry = QLineEdit()
+        self._password_entry.setMaxLength(20)
 
         self._password_entry_layout = QHBoxLayout()
         self._password_entry_layout.addWidget(self._password_entry_label)
