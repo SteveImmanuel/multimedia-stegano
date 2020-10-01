@@ -10,7 +10,7 @@ class MainWindow(QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
-        self.setWindowTitle('Stagenography')
+        self.setWindowTitle('Steganography')
         self.setMinimumSize(500, 600)
 
         self._conceal_tab = ConcealTab()
