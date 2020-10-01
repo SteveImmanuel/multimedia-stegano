@@ -1,3 +1,4 @@
+import time
 from typing import List, Dict
 
 from stegano.engine import BaseEngine
@@ -25,6 +26,8 @@ class DummyEngine(BaseEngine):
     def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str,
                  encryption_key: str, config: List[str]):
         print('Doing concealment with param {}'.format(config))
+        time.sleep(10)
+        print('Done concealment')
 
     def _extract(self, file_in_path: str, extract_file_path: str):
         pass

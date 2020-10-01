@@ -4,9 +4,10 @@ from typing import List, Dict
 
 
 class BaseEngine(ABC):
-    def conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str):
+    def conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str,
+                encryption_key: str, config: List[str]):
         # TODO: validation
-        self._conceal(file_in_path, secret_file_path, file_out_path)
+        self._conceal(file_in_path, secret_file_path, file_out_path, encryption_key, config)
 
     def extract(self, file_in_path: str, extract_file_path: str):
         # TODO: validation
@@ -33,8 +34,7 @@ class BaseEngine(ABC):
 
     @abstractmethod
     def _conceal(self, file_in_path: str, message_file_path: str, file_out_path: str,
-                 encryption_key: str,
-                 config: List[str]):
+                 encryption_key: str, config: List[str]):
         # Encryption key will be filled with empty string if encryption is disabled
         pass
 

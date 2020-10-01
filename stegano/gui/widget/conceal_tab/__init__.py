@@ -1,6 +1,7 @@
 from os import path
 from typing import Union
 
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QProgressDialog
 
 from stegano.engine import EngineFactory, EngineType, BaseEngine
@@ -8,6 +9,7 @@ from stegano.gui.loading_dialog import LoadingDialog
 from stegano.gui.widget.conceal_tab.summary_box import SummaryBox
 from stegano.gui.widget.config_box import ConfigBox
 from stegano.gui.widget.io_box import InputBox, OutputBox
+from stegano.gui.worker import Worker
 
 
 class ConcealTab(QWidget):
@@ -125,5 +127,8 @@ class ConcealTab(QWidget):
         self._check_requirement()
 
     def _on_conceal(self):
-        print(self._config_box.config)
+        config = self._config_box.config
+        worker = Worker(lambda: self._state_engine.conceal('', '', '', config[0], config[1]))
+        worker.signal.success.connect(lambda: self._loading_dialog.close())
+        QThreadPool.globalInstance().start(worker)
         self._loading_dialog.exec()

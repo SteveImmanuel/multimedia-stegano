@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QProgressBar
+from PyQt5.QtCore import Qt
 
 
 class LoadingDialog(QDialog):
@@ -9,6 +10,7 @@ class LoadingDialog(QDialog):
 
     def _setup_ui(self):
         self.setWindowTitle('Processing...')
+        self.setWindowFlags(Qt.Window| Qt.WindowTitleHint | Qt.CustomizeWindowHint)
 
         main_layout = QVBoxLayout()
 
