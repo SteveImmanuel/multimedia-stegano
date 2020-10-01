@@ -16,18 +16,26 @@ class DummyEngine(BaseEngine):
     def get_supported_extensions() -> List[str]:
         return ['txt']
 
-    def check_file_supported(self, filepath: str) -> bool:
+    @staticmethod
+    def check_file_supported(filepath: str) -> bool:
         # File must starts with text and ends with txt
         return filepath.endswith('txt') and filepath.startswith('text')
 
-    def get_max_message(self, filepath) -> int:
+    @staticmethod
+    def get_max_message(filepath) -> int:
         return 100000
 
-    def _conceal(self, file_in_path: str, secret_file_path: str, file_out_path: str,
-                 encryption_key: str, config: List[str]):
+    @staticmethod
+    def conceal(file_in_path: str, secret_file_path: str, file_out_path: str, encryption_key: str,
+                config: List[str]) -> None:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)
         print('Done concealment')
 
-    def _extract(self, file_in_path: str, extract_file_path: str):
+    @staticmethod
+    def extract(
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+    ) -> None:
         pass

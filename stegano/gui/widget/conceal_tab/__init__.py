@@ -1,5 +1,5 @@
 from os import path
-from typing import Union
+from typing import Union, Type
 
 from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
@@ -17,7 +17,7 @@ class ConcealTab(QWidget):
     def __init__(self):
         super(ConcealTab, self).__init__()
 
-        self._state_engine: Union[BaseEngine, None] = None
+        self._state_engine: Union[Type[BaseEngine], None] = None
         self._state_engine_type: Union[EngineType, None] = None
         self._state_config_valid = False
         self._state_input_loaded = False
@@ -121,7 +121,7 @@ class ConcealTab(QWidget):
             extension_supported = EngineFactory.get_engine_class(engine).get_supported_extensions()
             if file_ext in extension_supported:
                 self._state_engine_type = engine
-                self._state_engine = EngineFactory.create_engine(engine)
+                self._state_engine = EngineFactory.get_engine_class(engine)
                 break
 
         self._state_input_loaded = True

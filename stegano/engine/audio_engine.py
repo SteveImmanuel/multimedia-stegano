@@ -1,6 +1,5 @@
 import os
 import wave
-
 from typing import List, Dict
 
 from stegano.engine.base_engine import BaseEngine
@@ -18,18 +17,24 @@ class AudioEngine(BaseEngine):
     def __init__(self):
         super(AudioEngine, self).__init__()
 
-    def _conceal(self, file_in_path: str, message_file_path: str, file_out_path: str,
-                 encryption_key: str, config: List[str]):
+    @staticmethod
+    def conceal(
+        file_in_path: str,
+        message_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[str],
+    ) -> None:
         is_random, is_encrypt = AudioEngine.parse_config(config)
 
-        #TODO: convert to wav if file format is wrong or raise exception, await further development
+        # TODO: convert to wav if file format is wrong or raise exception, await further development
         filename, ext = os.path.basename(file_in_path).split('.')
         if ext.lower() != 'wav':
             raise OSError(f'Extension must be .wav, got .{ext}')
 
         cover_obj = wave.open(file_in_path, 'rb')
-        secret_msg_len = os.path.getsize(message_file_path) * 8  #in bit
-        max_file_size = cover_obj.getnframes() * 4  #in bit
+        secret_msg_len = os.path.getsize(message_file_path) * 8  # in bit
+        max_file_size = cover_obj.getnframes() * 4  # in bit
 
         metadata = FileUtil.gen_metadata(secret_msg_len, max_file_size, ext)
         metadata.append(1) if is_encrypt else metadata.append(0)
@@ -47,19 +52,19 @@ class AudioEngine(BaseEngine):
         if total_secret_size > max_file_size:
             raise ValueError(f'File too big, max size={max_file_size}, got {total_secret_size}')
 
-        frame_size = min(FRAME_SIZE, cover_obj.getnframes())  #1 frame = 4 bytes
+        frame_size = min(FRAME_SIZE, cover_obj.getnframes())  # 1 frame = 4 bytes
         frame_bytes = bytearray(list(cover_obj.readframes(frame_size)))
 
         with wave.open(file_out_path, 'wb') as stego:
             stego.setparams(cover_obj.getparams())
 
             with open(message_file_path, 'rb') as secret:
-                #set header, format, etc
+                # set header, format, etc
                 for i in range(len(metadata)):
                     bit = metadata[i]
                     frame_bytes[i] = (frame_bytes[i] & 254) | bit
 
-                #read chunk by chunk and flush the result
+                # read chunk by chunk and flush the result
                 offset = 1
                 i = 0
                 while (i < len(sequence_index)):
@@ -80,7 +85,7 @@ class AudioEngine(BaseEngine):
                         frame_bytes = bytearray(list(cover_obj.readframes(frame_size)))
                         offset += 1
 
-                #in case reading has not reached eof
+                # in case reading has not reached eof
                 while (cover_obj.tell() < cover_obj.getnframes()):
                     stego.writeframes(frame_bytes)
                     frame_bytes = bytearray(list(cover_obj.readframes(frame_size)))
@@ -88,7 +93,8 @@ class AudioEngine(BaseEngine):
                 stego.writeframes(frame_bytes)
         cover_obj.close()
 
-    def _extract(self, file_in_path: str, extract_file_path: str, encryption_key: str):
+    @staticmethod
+    def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> None:
 
         filename, ext = os.path.basename(file_in_path).split('.')
         if ext.lower() != 'wav':
@@ -161,11 +167,13 @@ class AudioEngine(BaseEngine):
     def get_supported_extensions(self) -> List[str]:
         return ['wav']
 
-    def check_file_supported(self, filepath: str) -> bool:
+    @staticmethod
+    def check_file_supported(filepath: str) -> bool:
         filename, ext = os.path.basename(filepath).split('.')
         return ext.lower() == 'wav'
 
-    def get_max_message(self, filepath: str) -> int:
+    @staticmethod
+    def get_max_message(filepath: str) -> int:
         cover_obj = wave.open(filepath, 'rb')
         return cover_obj.getnframes() * 4 // 8
 
