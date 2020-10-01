@@ -46,6 +46,14 @@ class InputBox(QGroupBox):
 
         self._set_button_state()
 
+    @property
+    def load_btn(self):
+        return self._load_btn
+
+    @property
+    def path_input(self):
+        return self._path_input.path_input
+
     def _on_open_btn(self):
         file_url = QUrl.fromLocalFile(self._path_input.path_input.text())
         QDesktopServices.openUrl(file_url)
