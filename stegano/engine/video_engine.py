@@ -12,11 +12,25 @@ from stegano.util.random_util import RandomUtil
 
 import datetime
 
+FRAME_RANDOM = 'f_rand'
+FRAME_SEQ = 'f_seq'
+PIXEL_RANDOM = 'f_rand'
+PIXEL_SEQ = 'f_seq'
+ENCRYPT_ON = 'enc_on'
+ENCRYPT_OFF = 'enc_off'
+
 
 class VideoEngine(BaseEngine):
     def check_key(self, key: str):
         s = len(key)
         assert s >= 1 and s <= 25
+
+    @staticmethod
+    def parse_config(config: List[str]) -> List[bool]:
+        res = [None] * 2
+        res[0] = True if config[0] == CONCEAL_RANDOM else False
+        res[1] = True if config[1] == ENCRYPT_ON else False
+        return res
 
     @staticmethod
     def get_conceal_option(self) -> List[Dict[str, str]]:
@@ -65,7 +79,7 @@ class VideoEngine(BaseEngine):
                 config: List[str]):
         start = datetime.datetime.now()
 
-        input_handle = open(secret_file_path, 'rb')
+        input_handle = open(message_file_path, 'rb')
         input_handle.seek(0, os.SEEK_END)
         file_size = input_handle.tell()
 
@@ -85,9 +99,12 @@ class VideoEngine(BaseEngine):
         frame_dim = shape[1:]
         frame_count = shape[0]
         max_stego_size = np.prod(frame_dim) * frame_count
+        ext = file_in_path.split('.')[-1]
+
+        metadata = FileUtil.gen_metadata(file_size, max_stego_size, ext)
+
         meta_data_len = FileUtil.get_metadata_len(max_stego_size)
         meta_data_len += 3  # 3 bit for 3 option
-        ext = file_in_path.split('.')[-1]
 
         min_pos = np.unravel_index(meta_data_len, shape)
 
