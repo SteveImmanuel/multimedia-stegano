@@ -1,5 +1,7 @@
 import math
 
+from typing import List, Dict, Tuple
+
 
 class FileUtil:
     @staticmethod
@@ -23,11 +25,30 @@ class FileUtil:
         return secret_len_bitsize + 32
 
     @staticmethod
-    def binary_to_dec(bin_array: list) -> int:
+    def binary_to_dec(bin_array: List[int]) -> int:
         string_array = map(str, bin_array)
         dec = ''.join(string_array)
         dec = '0b' + dec
         return int(dec, 2)
+
+    @staticmethod
+    def extract_metadata(bin_array: List[int]) -> Tuple[int, str]:
+        metadata = bin_array.copy()
+
+        ext = []
+        for i in range(4):
+            char = []
+            for j in range(8):
+                char.insert(0, str(metadata.pop()))
+            char = FileUtil.binary_to_dec(char)
+            char = chr(char)
+            if char != '\x00':
+                ext.insert(0, char)
+        ext = ''.join(ext)
+
+        secret_msg_len = FileUtil.binary_to_dec(metadata)
+
+        return (secret_msg_len, ext)
 
 
 if __name__ == "__main__":
