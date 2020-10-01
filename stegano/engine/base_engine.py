@@ -9,9 +9,14 @@ class BaseEngine(ABC):
         # TODO: validation
         self._conceal(file_in_path, secret_file_path, file_out_path, encryption_key, config)
 
-    def extract(self, file_in_path: str, extract_file_path: str):
+    def extract(
+        self,
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+    ):
         # TODO: validation
-        self._extract(file_in_path, extract_file_path)
+        self._extract(file_in_path, extract_file_path, encryption_key)
 
     @staticmethod
     @abstractmethod
@@ -39,5 +44,10 @@ class BaseEngine(ABC):
         pass
 
     @abstractmethod
-    def _extract(self, file_in_path: str, extract_file_path: str):
+    def _extract(
+        self,
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+    ):
         pass
