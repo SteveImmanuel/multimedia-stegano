@@ -24,7 +24,7 @@ class ConcealTab(QWidget):
     def _setup_ui(self):
         self._file_input_box = InputBox('Input file')
         self._message_input_box = InputBox('Message file')
-        self._encrypt_config_box = ConfigBox()
+        self._config_box = ConfigBox()
         self._summary_box = SummaryBox()
         self._file_output_box = OutputBox('Output file')
 
@@ -38,7 +38,7 @@ class ConcealTab(QWidget):
         self._main_layout = QVBoxLayout()
         self._main_layout.addLayout(self._input_layout)
         self._main_layout.addWidget(self._summary_box)
-        self._main_layout.addWidget(self._encrypt_config_box)
+        self._main_layout.addWidget(self._config_box)
         self._main_layout.addWidget(self._do_btn)
         self._main_layout.addWidget(self._file_output_box)
 
@@ -48,6 +48,7 @@ class ConcealTab(QWidget):
         self._file_input_box.path_input.textChanged.connect(self._on_input_changed)
         self._message_input_box.load_btn.clicked.connect(self._on_message_load)
         self._message_input_box.path_input.textChanged.connect(self._on_message_changed)
+        self._do_btn.clicked.connect(self._on_conceal)
 
         self._check_requirement()
 
@@ -64,6 +65,7 @@ class ConcealTab(QWidget):
     def _process_prereq(self):
         self._summary_box.set_message('Loading...')
         self._summary_box.set_file_detail('-', 0)
+        self._config_box.set_engine_option([])
         self._state_config_valid = False
 
         # Checking input file
@@ -79,6 +81,7 @@ class ConcealTab(QWidget):
         # Input file and engine exists, get file info
         max_message = self._state_engine.get_max_message(self._file_input_box.path_input.text())
         self._summary_box.set_file_detail(self._state_engine_type.value, max_message)
+        self._config_box.set_engine_option(self._state_engine.get_conceal_option())
 
         # Checking message file
         if not self._state_message_loaded:
@@ -117,3 +120,6 @@ class ConcealTab(QWidget):
 
         self._state_input_loaded = True
         self._check_requirement()
+
+    def _on_conceal(self):
+        print(self._config_box.config)
