@@ -14,14 +14,13 @@ class BaseEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_conceal_option(self) -> List[Dict[str, str]]:
+    def get_conceal_option() -> List[Dict[str, str]]:
         # Return list of dict, each dict value will be used ad the option label
         pass
-        return self._get_conceal_option()
 
     @staticmethod
     @abstractmethod
-    def get_supported_extensions(self) -> List[str]:
+    def get_supported_extensions() -> List[str]:
         pass
 
     @abstractmethod

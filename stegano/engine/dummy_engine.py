@@ -8,11 +8,11 @@ class DummyEngine(BaseEngine):
         super(DummyEngine, self).__init__()
 
     @staticmethod
-    def get_conceal_option(self) -> List[Dict[str, str]]:
+    def get_conceal_option() -> List[Dict[str, str]]:
         return [{'a': 'urutan a', 'b': 'urutan b'}, {'1': 'metode 1', '2': 'metode 2'}]
 
     @staticmethod
-    def get_supported_extensions(self) -> List[str]:
+    def get_supported_extensions() -> List[str]:
         return ['txt']
 
     def check_file_supported(self, filepath: str) -> bool:
