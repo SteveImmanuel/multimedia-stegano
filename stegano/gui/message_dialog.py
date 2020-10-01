@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import QVBoxLayout, QLabel, QDialog, QDialogButtonBox, QSizePolicy
+from PyQt5.QtWidgets import QVBoxLayout, QLabel, QDialog, QDialogButtonBox, QSizePolicy, QWidget
 
 
 class MessageDialog(QDialog):
-    def __init__(self, title: str, desc: str):
-        super(MessageDialog, self).__init__()
+    def __init__(self, title: str, desc: str, parent: QWidget):
+        super(MessageDialog, self).__init__(parent)
         self._title = title
         self._desc = desc
 

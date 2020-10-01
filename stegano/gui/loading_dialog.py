@@ -1,16 +1,16 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QProgressBar
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QDialog, QVBoxLayout, QProgressBar, QWidget
 
 
 class LoadingDialog(QDialog):
-    def __init__(self):
-        super(LoadingDialog, self).__init__()
+    def __init__(self, parent: QWidget):
+        super(LoadingDialog, self).__init__(parent)
 
         self._setup_ui()
 
     def _setup_ui(self):
         self.setWindowTitle('Processing...')
-        self.setWindowFlags(Qt.Window| Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
 
         main_layout = QVBoxLayout()
 

@@ -2,7 +2,7 @@ from os import path
 from typing import Union
 
 from PyQt5.QtCore import QThreadPool
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QProgressDialog
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton
 
 from stegano.engine import EngineFactory, EngineType, BaseEngine
 from stegano.gui.loading_dialog import LoadingDialog
@@ -25,7 +25,7 @@ class ConcealTab(QWidget):
         self._setup_ui()
 
     def _setup_ui(self):
-        self._loading_dialog = LoadingDialog()
+        self._loading_dialog = LoadingDialog(self)
 
         self._file_input_box = InputBox('Input file')
         self._message_input_box = InputBox('Message file')
