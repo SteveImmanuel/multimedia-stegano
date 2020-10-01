@@ -1,3 +1,6 @@
+from multiprocessing import cpu_count
+
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QMainWindow, QTabWidget
 
 from stegano.gui.widget.conceal_tab import ConcealTab
@@ -7,6 +10,9 @@ from stegano.gui.widget.extract_tab import ExtractTab
 class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
+
+        QThreadPool.globalInstance().setMaxThreadCount(cpu_count())
+
         self._setup_ui()
 
     def _setup_ui(self):
