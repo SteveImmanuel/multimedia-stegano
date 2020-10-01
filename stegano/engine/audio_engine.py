@@ -1,5 +1,7 @@
 import os
 import wave
+import math
+
 from typing import List, Dict
 
 from stegano.engine.base_engine import BaseEngine
@@ -140,6 +142,26 @@ class AudioEngine(BaseEngine):
                     temp_byte.clear()
 
     @staticmethod
+    def count_psnr(stego_filepath: str, original_filepath: str) -> float:
+        stego = wave.open(stego_filepath, 'rb')
+        original = wave.open(original_filepath, 'rb')
+
+        cur_max = 0
+        total_len = 0
+        mse = 0
+        frame_size = min(FRAME_SIZE, original.getnframes())
+        while (original.tell() < original.getnframes()):
+            stego_frames = list(stego.readframes(frame_size))
+            original_frames = list(original.readframes(frame_size))
+
+            total_len += len(original_frames)
+            cur_max = max(cur_max, max(stego_frames))
+            for i in range(len(original_frames)):
+                mse += (stego_frames[i] - original_frames[i])**2
+
+        return 20 * math.log(cur_max, 10) - 10 * math.log(mse, 10)
+
+    @staticmethod
     def get_ith_byte(stego_obj, i: int) -> int:
         stego_obj.setpos(i // 4)
         frame_bytes = stego_obj.readframes(1)
@@ -181,6 +203,8 @@ class AudioEngine(BaseEngine):
 if __name__ == "__main__":
     audio_engine = AudioEngine()
     base_path = '/home/steve/Git/multimedia-stegano/stegano/engine'
-    audio_engine.conceal(f'{base_path}/dual3.wav', f'{base_path}/sec.txt',
-                         f'{base_path}/testbuffer.wav', 'test123', [CONCEAL_SEQ, ENCRYPT_ON])
-    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
+    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/test.py',
+                         f'{base_path}/testbuffer.wav', 'test123', [CONCEAL_RANDOM, ENCRYPT_ON])
+    audio_engine.extract(f'{base_path}/testbuffer.wav', 'a.txt', 'test123')
+    psnr = audio_engine.count_psnr(f'{base_path}/testbuffer.wav', f'{base_path}/new.wav')
+    print(psnr)
