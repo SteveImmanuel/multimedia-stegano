@@ -71,6 +71,7 @@ class InputBox(QGroupBox):
 
         if filepath:
             self._path_input.path_input.setText(filepath)
+            self._load_btn.click()
 
     def _set_button_state(self):
         self._open_btn.setEnabled(self._file_valid)
