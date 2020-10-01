@@ -16,3 +16,8 @@ class RandomUtil:
             map(lambda val: (np.unravel_index(val[1], shape), val[0]), enumerate(sequence)))
         sequence.sort()
         return sequence
+
+    @staticmethod
+    def get_seed_from_string(text: str) -> int:
+        list_char = list(map(lambda x: ord(x), text))
+        return sum(list_char)
