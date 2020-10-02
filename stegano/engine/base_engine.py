@@ -26,6 +26,7 @@ class BaseEngine(ABC):
             file_in_path: str,
             extract_file_path: str,
             encryption_key: str,
+            config: List[Union[str, float, bool]],
     ) -> str:
         pass
 
@@ -33,6 +34,10 @@ class BaseEngine(ABC):
     @abstractmethod
     def get_conceal_option() -> List[ConfigParam]:
         pass
+
+    @staticmethod
+    def get_extract_option() -> List[ConfigParam]:
+        return []
 
     @staticmethod
     @abstractmethod

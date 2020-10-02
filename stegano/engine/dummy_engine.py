@@ -12,9 +12,16 @@ class DummyEngine(BaseEngine):
     @staticmethod
     def get_conceal_option() -> List[ConfigParam]:
         return [
-            RadioParam('radio', {'a': 'Option A', 'b': 'Option B'}),
+            RadioParam('radio', {
+                'a': 'Option A',
+                'b': 'Option B'
+            }),
             FloatParam('float', 0.1, 0.5)
         ]
+
+    @staticmethod
+    def get_extract_option() -> List[ConfigParam]:
+        return [RadioParam('radio', {'a': 'Option A', 'b': 'Option B'})]
 
     @staticmethod
     def get_supported_extensions() -> List[str]:
@@ -31,11 +38,11 @@ class DummyEngine(BaseEngine):
 
     @staticmethod
     def conceal(
-            file_in_path: str,
-            secret_file_path: str,
-            file_out_path: str,
-            encryption_key: str,
-            config: List[Union[str, float, bool]],
+        file_in_path: str,
+        secret_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> str:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)
@@ -46,11 +53,12 @@ class DummyEngine(BaseEngine):
 
     @staticmethod
     def extract(
-            file_in_path: str,
-            extract_file_path: str,
-            encryption_key: str,
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> str:
-        print('Doing extract with param {}'.format(encryption_key))
+        print('Doing extract with param {} {}'.format(encryption_key, config))
         time.sleep(5)
         with open(extract_file_path, 'w') as file:
             file.write('Hello, this is extracted test')

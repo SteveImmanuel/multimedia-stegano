@@ -21,15 +21,24 @@ class ImageEngine(BaseEngine):
     @staticmethod
     def get_conceal_option() -> List[ConfigParam]:
         return [
-            RadioParam('Method', {CONCEAL_BPCS: 'BPCS', CONCEAL_LSB: 'LSB'}),
-            RadioParam('Order', {CONCEAL_RANDOM: 'Random', CONCEAL_SEQ: 'Sequential'}),
+            RadioParam('Method', {
+                CONCEAL_BPCS: 'BPCS',
+                CONCEAL_LSB: 'LSB'
+            }),
+            RadioParam('Order', {
+                CONCEAL_RANDOM: 'Random',
+                CONCEAL_SEQ: 'Sequential'
+            }),
             FloatParam('Threshold for BPCS', 0.1, 0.3)
         ]
 
     @staticmethod
     def get_extract_option() -> List[ConfigParam]:
         return [
-            RadioParam('Method', {CONCEAL_BPCS: 'BPCS', CONCEAL_LSB: 'LSB'}),
+            RadioParam('Method', {
+                CONCEAL_BPCS: 'BPCS',
+                CONCEAL_LSB: 'LSB'
+            }),
         ]
 
     @staticmethod
@@ -108,8 +117,13 @@ class ImageEngine(BaseEngine):
         secret_file_handle.close()
 
     @staticmethod
-    def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> None:
-        is_lsb = True
+    def extract(
+            file_in_path: str,
+            extract_file_path: str,
+            encryption_key: str,
+            config: List[Union[str, float, bool]],
+    ) -> None:
+        is_lsb = config[1] == CONCEAL_LSB
 
         image = imread(file_in_path)
         image_shape = image.shape
@@ -162,4 +176,4 @@ if __name__ == '__main__':
     # ImageEngine.extract('out.png', 'out_simple.txt', '')
 
     ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [True, CONCEAL_LSB, CONCEAL_SEQ])
-    ImageEngine.extract('out', 'extracted.txt', 'a')
+    ImageEngine.extract('out', 'extracted.txt', 'a',[True, CONCEAL_LSB])

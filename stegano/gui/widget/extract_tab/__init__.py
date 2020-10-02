@@ -82,6 +82,9 @@ class ExtractTab(QWidget):
         state_engine_type = EngineFactory.get_engine_to_handle_file(file_path)
         if state_engine_type is not None:
             self._state_engine = EngineFactory.get_engine_class(state_engine_type)
+            self._config_box.set_engine_option(self._state_engine.get_extract_option())
+        else:
+            self._config_box.set_engine_option([])
 
         self._state_input_loaded = True
         self._check_requirement()
@@ -93,7 +96,7 @@ class ExtractTab(QWidget):
         out_path = FileUtil.get_temp_out_name()
 
         worker = Worker(
-            lambda: self._state_engine.extract(in_path, out_path, config[0])
+            lambda: self._state_engine.extract(in_path, out_path, config[0], config[1])
         )
         worker.signal.success.connect(self._on_extract_success)
         worker.signal.error.connect(self._on_extract_error)
