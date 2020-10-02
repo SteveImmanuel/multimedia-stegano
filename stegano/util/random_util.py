@@ -1,13 +1,12 @@
 import random
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
-from nptyping import ndarray
 
 
 class RandomUtil:
     @staticmethod
-    def get_random_sequence(min_pos: ndarray, shape: ndarray, n: int, seed: int) -> list:
+    def get_random_sequence(min_pos: Tuple, shape: Tuple, n: int, seed: Union[int, float]) -> list:
         random.seed(seed)
         min_index = int(np.ravel_multi_index(min_pos, shape))
         max_index = int(np.prod(shape))
