@@ -36,21 +36,23 @@ class DummyEngine(BaseEngine):
             file_out_path: str,
             encryption_key: str,
             config: List[Union[str, float]],
-    ) -> None:
+    ) -> str:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)
         with open(file_out_path, 'w') as file:
             file.write('Hello, this is test')
         print('Done concealment')
+        return secret_file_path + '.dummy'
 
     @staticmethod
     def extract(
             file_in_path: str,
             extract_file_path: str,
             encryption_key: str,
-    ) -> None:
+    ) -> str:
         print('Doing extract with param {}'.format(encryption_key))
         time.sleep(5)
         with open(extract_file_path, 'w') as file:
             file.write('Hello, this is extracted test')
         print('Done extracting')
+        return extract_file_path + '.result'

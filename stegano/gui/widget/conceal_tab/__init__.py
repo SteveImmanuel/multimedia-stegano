@@ -139,8 +139,6 @@ class ConcealTab(QWidget):
         in_path = self._file_input_box.path_input.text()
         msg_path = self._message_input_box.path_input.text()
 
-        self._state_output_path = out_path
-
         worker = Worker(
             lambda: self._state_engine.conceal(in_path, msg_path, out_path, config[0], config[1])
         )
@@ -149,8 +147,7 @@ class ConcealTab(QWidget):
         QThreadPool.globalInstance().start(worker)
         self._loading_dialog.exec()
 
-    def _on_conceal_success(self):
-        out_path = self._state_output_path
+    def _on_conceal_success(self, out_path: str):
         self._file_output_box.path_output.setText(out_path)
         self._loading_dialog.close()
 

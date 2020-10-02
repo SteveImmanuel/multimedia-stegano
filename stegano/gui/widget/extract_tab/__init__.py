@@ -91,7 +91,6 @@ class ExtractTab(QWidget):
 
         in_path = self._file_input_box.path_input.text()
         out_path = FileUtil.get_temp_out_name()
-        self._state_output_path = out_path
 
         worker = Worker(
             lambda: self._state_engine.extract(in_path, out_path, config[0])
@@ -101,8 +100,7 @@ class ExtractTab(QWidget):
         QThreadPool.globalInstance().start(worker)
         self._loading_dialog.exec()
 
-    def _on_extract_success(self):
-        out_path = self._state_output_path
+    def _on_extract_success(self, out_path: str):
         self._file_output_box.path_output.setText(out_path)
         self._loading_dialog.close()
 
