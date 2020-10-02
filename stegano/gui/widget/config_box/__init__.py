@@ -1,5 +1,6 @@
 from typing import List, Tuple, Union
 
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QGroupBox, QButtonGroup, QRadioButton, QLineEdit, QVBoxLayout, \
     QHBoxLayout, QLabel, QFormLayout, QDoubleSpinBox
 
@@ -8,6 +9,8 @@ from stegano.util import StringUtil
 
 
 class ConfigBox(QGroupBox):
+    modified = pyqtSignal()
+
     def __init__(self):
         super(ConfigBox, self).__init__()
 
@@ -91,6 +94,8 @@ class ConfigBox(QGroupBox):
                     if idx == 0:
                         radio_btn.setChecked(True)
 
+                    radio_btn.clicked.connect(lambda: self.modified.emit())
+
                     option_group.addButton(radio_btn)
                     option_group.setId(radio_btn, idx)
                     button_layout.addWidget(radio_btn)
@@ -103,6 +108,7 @@ class ConfigBox(QGroupBox):
                 spinbox.setValue(param.default)
                 spinbox.setMinimum(0)
                 spinbox.setSingleStep(param.step)
+                spinbox.valueChanged.connect(lambda: self.modified.emit())
                 self._state_engine_option_holder.append(spinbox)
                 self._main_layout.addRow(engine_option_label, spinbox)
 

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from stegano.gui.config_param import ConfigParam
 
@@ -8,19 +8,19 @@ from stegano.gui.config_param import ConfigParam
 class BaseEngine(ABC):
     @staticmethod
     def conceal(
-        file_in_path: str,
-        secret_file_path: str,
-        file_out_path: str,
-        encryption_key: str,
-        config: List[str],
+            file_in_path: str,
+            secret_file_path: str,
+            file_out_path: str,
+            encryption_key: str,
+            config: List[Union[str, float]],
     ) -> None:
         pass
 
     @staticmethod
     def extract(
-        file_in_path: str,
-        extract_file_path: str,
-        encryption_key: str,
+            file_in_path: str,
+            extract_file_path: str,
+            encryption_key: str,
     ) -> None:
         pass
 
@@ -36,10 +36,10 @@ class BaseEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def check_file_supported(filepath: str) -> bool:
+    def check_file_supported(file_path: str) -> bool:
         pass
 
     @staticmethod
     @abstractmethod
-    def get_max_message(filepath: str) -> int:
+    def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         pass

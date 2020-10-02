@@ -59,7 +59,11 @@ class ConcealTab(QWidget):
         self._message_input_box.load_btn.clicked.connect(self._on_message_load)
         self._message_input_box.path_input.textChanged.connect(self._on_message_changed)
         self._do_btn.clicked.connect(self._on_conceal)
+        self._config_box.modified.connect(self._on_config_changed)
 
+        self._check_requirement()
+
+    def _on_config_changed(self):
         self._check_requirement()
 
     def _on_input_changed(self):
@@ -76,7 +80,6 @@ class ConcealTab(QWidget):
         self._file_output_box.path_output.setText('')
         self._summary_box.set_message('Loading...')
         self._summary_box.set_file_detail('-', 0)
-        self._config_box.set_engine_option([])
         self._state_config_valid = False
 
         # Checking input file
@@ -90,9 +93,9 @@ class ConcealTab(QWidget):
             return
 
         # Input file and engine exists, get file info
-        max_message = self._state_engine.get_max_message(self._file_input_box.path_input.text())
+        max_message = self._state_engine.get_max_message(self._file_input_box.path_input.text(),
+                                                         self._config_box.config[1])
         self._summary_box.set_file_detail(self._state_engine_type.value, max_message)
-        self._config_box.set_engine_option(self._state_engine.get_conceal_option())
 
         # Checking message file
         if not self._state_message_loaded:
@@ -122,6 +125,9 @@ class ConcealTab(QWidget):
         self._state_engine_type = EngineFactory.get_engine_to_handle_file(file_path)
         if self._state_engine_type is not None:
             self._state_engine = EngineFactory.get_engine_class(self._state_engine_type)
+            self._config_box.set_engine_option(self._state_engine.get_conceal_option())
+        else:
+            self._config_box.set_engine_option([])
 
         self._state_input_loaded = True
         self._check_requirement()

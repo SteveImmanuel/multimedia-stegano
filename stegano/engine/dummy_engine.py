@@ -1,5 +1,5 @@
 import time
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from stegano.engine import BaseEngine
 from stegano.gui.config_param import ConfigParam, RadioParam, FloatParam
@@ -21,13 +21,13 @@ class DummyEngine(BaseEngine):
         return ['txt']
 
     @staticmethod
-    def check_file_supported(filepath: str) -> bool:
+    def check_file_supported(file_path: str) -> bool:
         # File must starts with text and ends with txt
-        return filepath.endswith('txt') and filepath.startswith('text')
+        return file_path.endswith('txt') and file_path.startswith('text')
 
     @staticmethod
-    def get_max_message(filepath) -> int:
-        return 100000
+    def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
+        return int(100000 * option[1])
 
     @staticmethod
     def conceal(
@@ -35,7 +35,7 @@ class DummyEngine(BaseEngine):
             secret_file_path: str,
             file_out_path: str,
             encryption_key: str,
-            config: List[str],
+            config: List[Union[str, float]],
     ) -> None:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)

@@ -3,7 +3,7 @@ from PyQt5.QtCore import QRunnable, pyqtSignal, QObject
 
 class WorkerSignal(QObject):
     error = pyqtSignal(str)
-    success = pyqtSignal(type(None))
+    success = pyqtSignal()
 
 
 class Worker(QRunnable):
@@ -16,7 +16,7 @@ class Worker(QRunnable):
     def run(self):
         try:
             self.function()
-            self.signal.success.emit(None)
+            self.signal.success.emit()
         except Exception as e:
             print(e)
             self.signal.error.emit(str(e))
