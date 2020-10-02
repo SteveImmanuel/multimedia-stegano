@@ -43,14 +43,16 @@ class ConcealTab(QWidget):
         self._do_btn = QPushButton()
         self._do_btn.setText('Conceal')
 
-        self._main_layout = QVBoxLayout()
-        self._main_layout.addLayout(self._input_layout)
-        self._main_layout.addWidget(self._summary_box)
-        self._main_layout.addWidget(self._config_box)
-        self._main_layout.addWidget(self._do_btn)
-        self._main_layout.addWidget(self._file_output_box)
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(self._input_layout)
+        main_layout.addWidget(self._summary_box)
+        main_layout.addWidget(self._config_box)
+        main_layout.addStretch()
+        main_layout.addWidget(self._do_btn)
+        main_layout.addStretch()
+        main_layout.addWidget(self._file_output_box)
 
-        self.setLayout(self._main_layout)
+        self.setLayout(main_layout)
 
         self._file_input_box.load_btn.clicked.connect(self._on_input_load)
         self._file_input_box.path_input.textChanged.connect(self._on_input_changed)

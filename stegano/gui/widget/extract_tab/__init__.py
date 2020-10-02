@@ -37,8 +37,10 @@ class ExtractTab(QWidget):
         main_layout = QVBoxLayout()
         main_layout.addWidget(self._file_input_box)
         main_layout.addWidget(self._config_box)
+        main_layout.addStretch()
         main_layout.addWidget(self._status_label)
         main_layout.addWidget(self._do_btn)
+        main_layout.addStretch()
         main_layout.addWidget(self._file_output_box)
 
         self.setLayout(main_layout)
