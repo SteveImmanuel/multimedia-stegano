@@ -45,4 +45,8 @@ class DummyEngine(BaseEngine):
         extract_file_path: str,
         encryption_key: str,
     ) -> None:
-        pass
+        print('Doing extract with param {}'.format(encryption_key))
+        time.sleep(5)
+        with open(extract_file_path, 'w') as file:
+            file.write('Hello, this is extracted test')
+        print('Done extracting')

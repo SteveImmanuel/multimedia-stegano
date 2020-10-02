@@ -1,10 +1,15 @@
 from typing import Optional, Type
 
+from PyQt5.QtCore import QThreadPool
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel
 
 from stegano.engine import EngineFactory, BaseEngine
+from stegano.gui.loading_dialog import LoadingDialog
+from stegano.gui.message_dialog import MessageDialog
 from stegano.gui.widget.config_box import ConfigBox
 from stegano.gui.widget.io_box import InputBox, OutputBox
+from stegano.gui.worker import Worker
+from stegano.util import FileUtil
 
 
 class ExtractTab(QWidget):
@@ -14,10 +19,13 @@ class ExtractTab(QWidget):
         self._state_config_valid = False
         self._state_input_loaded = False
         self._state_engine: Optional[Type[BaseEngine]] = None
+        self._state_output_path = ''
 
         self._setup_ui()
 
     def _setup_ui(self):
+        self._loading_dialog = LoadingDialog(self)
+
         self._file_input_box = InputBox('Input file')
         self._file_output_box = OutputBox('Message output')
         self._config_box = ConfigBox()
@@ -77,4 +85,26 @@ class ExtractTab(QWidget):
         self._check_requirement()
 
     def _on_extract(self):
-        print(self._config_box.config)
+        config = self._config_box.config
+
+        in_path = self._file_input_box.path_input.text()
+        out_path = FileUtil.get_temp_out_name()
+        self._state_output_path = out_path
+
+        worker = Worker(
+            lambda: self._state_engine.extract(in_path, out_path, config[0])
+        )
+        worker.signal.success.connect(self._on_extract_success)
+        worker.signal.error.connect(self._on_extract_error)
+        QThreadPool.globalInstance().start(worker)
+        self._loading_dialog.exec()
+
+    def _on_extract_success(self):
+        out_path = self._state_output_path
+        self._file_output_box.path_output.setText(out_path)
+        self._loading_dialog.close()
+
+    def _on_extract_error(self, msg: str):
+        self._loading_dialog.close()
+        error_dialog = MessageDialog('Error', msg, self, True)
+        error_dialog.exec()
