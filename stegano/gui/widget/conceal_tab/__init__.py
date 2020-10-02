@@ -115,17 +115,11 @@ class ConcealTab(QWidget):
         self._check_requirement()
 
     def _on_input_load(self):
-        all_engine = EngineType.list()
         file_path = self._file_input_box.path_input.text()
 
-        file_ext = path.splitext(file_path)[-1][1:]
-
-        for engine in all_engine:
-            extension_supported = EngineFactory.get_engine_class(engine).get_supported_extensions()
-            if file_ext in extension_supported:
-                self._state_engine_type = engine
-                self._state_engine = EngineFactory.get_engine_class(engine)
-                break
+        self._state_engine_type = EngineFactory.get_engine_to_handle_file(file_path)
+        if self._state_engine_type is not None:
+            self._state_engine = EngineFactory.get_engine_class(self._state_engine_type)
 
         self._state_input_loaded = True
         self._check_requirement()

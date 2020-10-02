@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Type
+from os import path
+from typing import Type, Union
 
 from stegano.engine import BaseEngine, DummyEngine
 
@@ -13,6 +14,22 @@ class EngineType(Enum):
 
 
 class EngineFactory:
+
+    @staticmethod
+    def get_engine_to_handle_file(file_path: str) -> Union[EngineType, None]:
+        all_engine = EngineType.list()
+
+        file_ext = path.splitext(file_path)[-1][1:]
+
+        selected_engine = None
+
+        for engine in all_engine:
+            extension_supported = EngineFactory.get_engine_class(engine).get_supported_extensions()
+            if file_ext in extension_supported:
+                selected_engine = engine
+                break
+
+        return selected_engine
 
     @staticmethod
     def get_engine_class(engine_type: EngineType) -> Type[BaseEngine]:
