@@ -9,8 +9,8 @@ class RandomUtil:
     @staticmethod
     def get_random_sequence(min_pos: ndarray, shape: ndarray, n: int, seed: int) -> list:
         random.seed(seed)
-        min_index = np.ravel_multi_index(min_pos, shape)
-        max_index = np.prod(shape)
+        min_index = int(np.ravel_multi_index(min_pos, shape))
+        max_index = int(np.prod(shape))
         sequence = random.sample(range(min_index, max_index), n)
         sequence = list(
             map(lambda val: (np.unravel_index(val[1], shape), val[0]), enumerate(sequence)))

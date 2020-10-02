@@ -1,16 +1,14 @@
 import math
 import os
-import random
 from typing import Dict, List
 
 import cv2
 import numpy as np
 import skvideo.io
+
 from stegano.engine.base_engine import BaseEngine
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
-
-import datetime
 
 FRAME_RANDOM = 'f_rand'
 FRAME_SEQ = 'f_seq'
@@ -21,32 +19,33 @@ ENCRYPT_OFF = 'enc_off'
 
 
 class VideoEngine(BaseEngine):
-    def check_key(self, key: str):
-        s = len(key)
-        assert s >= 1 and s <= 25
+    @staticmethod
+    def check_key(key: str):
+        assert 1 <= len(key) <= 25
 
     @staticmethod
     def parse_config(config: List[str]) -> List[bool]:
-        res = [None] * 2
-        res[0] = True if config[0] == CONCEAL_RANDOM else False
-        res[1] = True if config[1] == ENCRYPT_ON else False
+        res = [False] * 3
+        res[0] = True if config[0] == ENCRYPT_ON else False
+        res[1] = True if config[1] == FRAME_SEQ else False
+        res[2] = True if config[2] == PIXEL_SEQ else False
         return res
 
     @staticmethod
-    def get_conceal_option(self) -> List[Dict[str, str]]:
+    def get_conceal_option() -> List[Dict[str, str]]:
         return [{
-            'enc': 'dengan enkripsi',
-            'nenc': 'tanpa enkripsi'
+            ENCRYPT_ON: 'dengan enkripsi',
+            ENCRYPT_OFF: 'tanpa enkripsi'
         }, {
-            'f_seq': 'frame sekuensial',
-            'f_rand': 'frame acak'
+            FRAME_SEQ: 'frame sekuensial',
+            FRAME_RANDOM: 'frame acak'
         }, {
-            'p_seq': 'pixel-pixel sekuensial',
-            'p_rand': 'pixel-pixel acak'
+            PIXEL_SEQ: 'pixel-pixel sekuensial',
+            PIXEL_RANDOM: 'pixel-pixel acak'
         }]
 
     @staticmethod
-    def get_supported_extensions(self) -> List[str]:
+    def get_supported_extensions() -> List[str]:
         return ['avi']
 
     def check_file_supported(self, filepath: str) -> bool:
@@ -55,172 +54,167 @@ class VideoEngine(BaseEngine):
         vid_cap.release()
         return filepath.endswith('.avi') and is_opened
 
+    @staticmethod
     def get_max_message(filepath: str) -> int:
-        vid_cap = cv2.VideoCapture(filepath)
+        video_reader = skvideo.io.FFmpegReader(filepath)
+        shape = video_reader.getShape()
+        max_cover_size = np.prod(shape)
+        len_metadata = FileUtil.get_metadata_len(max_cover_size) + len(
+            VideoEngine.get_supported_extensions())  # 3 bit for 3 option
+        return (max_cover_size - math.ceil(len_metadata / 8)) // 8
 
-        if not vid_cap.isOpened():
-            return 0
+    @staticmethod
+    def conceal(file_in_path: str, message_file_path: str, file_out_path: str, encryption_key: str,
+                config: List[str]) -> None:
+        is_encrypt, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
+        VideoEngine.check_key(encryption_key)
 
-        ret, frame = vid_cap.read()
-        if not ret:
-            return 0
-        frame_dim = frame.shape
-        frame_count = vid_cap.get(7)
-        max_stego_size = np.prod(frame_dim) * frame_count
-        meta_data_len = FileUtil.get_metadata_len(max_stego_size)
-        meta_data_len += 3  # 3 bit for 3 option
+        filename, ext = os.path.basename(file_in_path).split('.')
+        if ext.lower() not in VideoEngine.get_supported_extensions():
+            raise OSError(f'Extension .{ext} not supported')
 
-        max_message_size = max_stego_size - math.ceil(meta_data_len / 8)
-
-        vid_cap.release()
-        return max_message_size
-
-    def conceal(file_in_path: str, secret_file_path: str, file_out_path: str, encryption_key: str,
-                config: List[str]):
-        start = datetime.datetime.now()
-
-        input_handle = open(message_file_path, 'rb')
-        input_handle.seek(0, os.SEEK_END)
-        file_size = input_handle.tell()
-
-        writer = skvideo.io.FFmpegWriter(
+        video_reader = skvideo.io.FFmpegReader(file_in_path)
+        video_writer = skvideo.io.FFmpegWriter(
             file_out_path,
             outputdict={
-                '-vcodec': 'libx264rgb',  #use the h.264 codec
+                '-vcodec': 'libx264rgb',  # use the h.264 codec
                 '-crf': '0',
                 '-preset': 'veryslow',
             })
-        print(file_size)
 
-        videogen = skvideo.io.FFmpegReader(file_in_path)
+        video_shape = video_reader.getShape()
+        max_cover_size = np.prod(video_shape)
+        max_message_size = VideoEngine.get_max_message(file_in_path) * 8  # in bit
+        message_len = os.path.getsize(message_file_path) * 8  # in bit
 
-        shape = videogen.getShape()
+        if message_len > max_message_size:
+            raise ValueError(f'File too big, max size={max_message_size}, got {message_len}')
 
-        frame_dim = shape[1:]
-        frame_count = shape[0]
-        max_stego_size = np.prod(frame_dim) * frame_count
-        ext = file_in_path.split('.')[-1]
+        metadata = FileUtil.gen_metadata(message_len, max_cover_size, ext)
 
-        metadata = FileUtil.gen_metadata(file_size, max_stego_size, ext)
+        metadata.append(0)
+        if is_encrypt:
+            metadata[-1] = 1
+            # TODO encrypt
 
-        meta_data_len = FileUtil.get_metadata_len(max_stego_size)
-        meta_data_len += 3  # 3 bit for 3 option
+        metadata.append(1) if is_frame_seq else metadata.append(0)
+        metadata.append(1) if is_pixel_seq else metadata.append(0)
 
-        min_pos = np.unravel_index(meta_data_len, shape)
+        min_pos = np.unravel_index(len(metadata), video_shape)
 
-        meta_data = FileUtil.gen_metadata(file_size, max_stego_size, ext)
+        message_handle = open(message_file_path, 'rb')
+
         seed = RandomUtil.get_seed_from_string(encryption_key)
-        sequence = RandomUtil.get_random_sequence(min_pos, shape, file_size * 8, seed)
-        # sequence = [(np.unravel_index(i, shape), i) for i in range(file_size * 8)]
+        random_pixel_sequence = RandomUtil.get_random_sequence(min_pos, video_shape, message_len, seed)
+        # random_pixel_sequence = [(np.unravel_index(i, video_shape), i) for i in range(file_size * 8)]
 
-        current_frame = 0
-        squence_idx = 0
-        pos, idx = sequence[squence_idx]
-        count = 0
-        for read_frame in videogen.nextFrame():
+        current_video_frame = 0
+        random_pixel_sequence_idx = 0
+        pixel_location_in_video, bit_idx_in_message = random_pixel_sequence[random_pixel_sequence_idx]
+
+        for read_frame in video_reader.nextFrame():
             frame = read_frame.copy()
 
-            # TODO handle meta data
+            if current_video_frame == 0:
+                #  first frame, insert meta data
+                for i in range(len(metadata)):
+                    metadata_bit = metadata[i]
+                    frame_byte = frame[np.unravel_index(i, video_shape)[1:]]
+                    frame[np.unravel_index(i, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
 
-            frame_pos = pos[0]
-            while frame_pos == current_frame:
+            pixel_frame_location = pixel_location_in_video[0]
+            while pixel_frame_location == current_video_frame:
+                byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
+                message_handle.seek(byte_location_in_message)
+                message_byte = message_handle.read(1)  # read 1 byte
+                message_bit = ord(message_byte) >> (7 - bit_location_in_byte) & 1  # 0 location is from left
 
-                byte_pos, bit_pos = divmod(idx, 8)
-                input_handle.seek(byte_pos)
-                the_byte = input_handle.read(1)
-                the_bit = ord(the_byte) >> (7 - bit_pos) & 1
+                pixel_location_in_frame = np.array(pixel_location_in_video[1:])
+                pixel_location_in_frame[-1] += 2 * (1 - pixel_location_in_frame[-1])
+                pixel_location_in_frame = tuple(pixel_location_in_frame)
 
-                the_channel = pos[-1]
-                if pos[-1] == 0:
-                    the_channel = 2
-                elif pos[-1] == 2:
-                    the_channel = 0
+                frame[pixel_location_in_frame] &= 254
+                frame[pixel_location_in_frame] |= message_bit
 
-                the_pos = (pos[1], pos[2], the_channel)
-
-                frame[the_pos] &= 254
-                frame[the_pos] |= the_bit
-
-                squence_idx += 1
-                count += 1
-                if squence_idx >= len(sequence):
+                random_pixel_sequence_idx += 1
+                if random_pixel_sequence_idx >= len(random_pixel_sequence):
+                    # all bit in message have been embedded
                     break
 
-                pos, idx = sequence[squence_idx]
-                frame_pos = pos[0]
+                pixel_location_in_video, bit_idx_in_message = random_pixel_sequence[random_pixel_sequence_idx]
+                pixel_frame_location = pixel_location_in_video[0]
 
-            writer.writeFrame(frame)
-            current_frame += 1
+            video_writer.writeFrame(frame)
+            current_video_frame += 1
 
-        writer.close()  #close the writer
-        print(datetime.datetime.now() - start)
+        video_writer.close()  # close the writer
 
+    @staticmethod
     def extract(
-        file_in_path: str,
-        extract_file_path: str,
-        encryption_key: str,
+            file_in_path: str,
+            extract_file_path: str,
+            encryption_key: str,
     ):
-        start = datetime.datetime.now()
-        # self.check_key(encryption_key)
+        VideoEngine.check_key(encryption_key)
 
-        output_handler = open(extract_file_path, 'wb')
-        output_handler.seek(0, os.SEEK_END)
-        file_size = 9
+        filename, ext = os.path.basename(file_in_path).split('.')
+        if ext.lower() not in VideoEngine.get_supported_extensions():
+            raise OSError(f'Extension .{ext} not supported')
 
-        vid_cap = cv2.VideoCapture(file_in_path)
-        assert vid_cap.isOpened()
+        message_output_handler = open(extract_file_path, 'wb')
 
-        ret, frame = vid_cap.read()
-        assert ret
+        video_capture = cv2.VideoCapture(file_in_path)
+        assert video_capture.isOpened()
+        ret_status, frame = video_capture.read()  # get first frame
+        assert ret_status
 
         frame_dim = frame.shape
-        frame_count = vid_cap.get(7)
-        max_stego_size = np.prod(frame_dim) * frame_count
-        meta_data_len = FileUtil.get_metadata_len(max_stego_size)
-        meta_data_len += 3  # 3 bit for 3 option
-        ext = file_in_path.split('.')[-1]
+        frame_count = video_capture.get(7)
+        video_shape = [int(frame_count)] + [i for i in frame_dim]
+        max_cover_size = np.prod(frame_dim) * frame_count
+        metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(VideoEngine.get_conceal_option())
+        frame_header = bytearray(list(frame.ravel()[:metadata_len]))
 
-        shape = [int(frame_count)] + [i for i in frame_dim]
-        min_pos = np.unravel_index(meta_data_len, shape)
+        metadata = []
+        for i in range(metadata_len):
+            metadata.append(frame_header[i] & 1)
 
-        meta_data = FileUtil.gen_metadata(file_size, max_stego_size, ext)
+        is_pixel_seq = True if metadata.pop() == 1 else False
+        is_frame_seq = True if metadata.pop() == 1 else False
+        is_encrypt = True if metadata.pop() == 1 else False
+
+        message_len, ext = FileUtil.extract_metadata(metadata)  # message_len in bit
+        # TODO use ext for saving file
+
+        if is_encrypt:
+            # TODO decrypt
+            pass
+        min_pos = np.unravel_index(metadata_len, video_shape)
+
         seed = RandomUtil.get_seed_from_string(encryption_key)
-        sequence = RandomUtil.get_random_sequence(min_pos, shape, file_size * 8, seed)
-        # sequence = [(np.unravel_index(i, shape), i) for i in range(file_size * 8)]
+        random_pixel_sequence = RandomUtil.get_random_sequence(min_pos, video_shape, message_len, seed)
+        random_pixel_sequence.sort(key=lambda val: val[1])
 
-        # print(sequence)
-        sequence.sort(key=lambda val: val[1])
-
-        the_byte = 0
+        temp_byte = 0
         assign_count = 0
-        count = 0
-        # print(sequence)
-        for pos, idx in sequence:
-            # print(pos, idx)
-            frame_pos = pos[0]
-            vid_cap.set(1, frame_pos)  # set next frame
-            ret, frame = vid_cap.read()
+        for pixel_location_in_video, _ in random_pixel_sequence:
+            frame_pos = pixel_location_in_video[0]
+            video_capture.set(1, frame_pos)  # set next frame
+            ret_status, frame = video_capture.read()
 
-            if not ret:
-                # error accure not reach end of sequence
-                print('an error occure while extract')
+            if not ret_status:
+                # error occur not reach end of random_pixel_sequence
+                print('An error occur while extracting message')
                 break
 
-            the_bit = frame[pos[1:]] & 1
-            # print(the_bit, idx)
-            the_byte <<= 1
-            the_byte |= the_bit
+            message_bit = frame[pixel_location_in_video[1:]] & 1
+            temp_byte <<= 1
+            temp_byte |= message_bit
             assign_count += 1
 
             if assign_count == 8:
-                count += 1
-                print(bytes([the_byte]))
-                output_handler.write(bytes([the_byte]))
-                # print('write')
-                the_byte = 0
+                message_output_handler.write(bytes([temp_byte]))
+                temp_byte = 0
                 assign_count = 0
 
-        print(count)
-
-        vid_cap.release()
-        print(datetime.datetime.now() - start)
+        video_capture.release()
