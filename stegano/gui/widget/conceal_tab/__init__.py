@@ -45,8 +45,8 @@ class ConcealTab(QWidget):
 
         main_layout = QVBoxLayout()
         main_layout.addLayout(self._input_layout)
-        main_layout.addWidget(self._summary_box)
         main_layout.addWidget(self._config_box)
+        main_layout.addWidget(self._summary_box)
         main_layout.addStretch()
         main_layout.addWidget(self._do_btn)
         main_layout.addStretch()

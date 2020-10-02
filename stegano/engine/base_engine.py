@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 
 from typing import List, Dict
 
+from stegano.gui.config_param import ConfigParam
+
 
 class BaseEngine(ABC):
     @staticmethod
@@ -24,8 +26,7 @@ class BaseEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_conceal_option() -> List[Dict[str, str]]:
-        # Return list of dict, each dict value will be used ad the option label
+    def get_conceal_option() -> List[ConfigParam]:
         pass
 
     @staticmethod

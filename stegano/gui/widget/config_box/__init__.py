@@ -1,8 +1,9 @@
-from typing import List, Dict, Tuple
+from typing import List, Tuple, Union
 
 from PyQt5.QtWidgets import QGroupBox, QButtonGroup, QRadioButton, QLineEdit, QVBoxLayout, \
-    QHBoxLayout, QLabel, QFormLayout
+    QHBoxLayout, QLabel, QFormLayout, QDoubleSpinBox
 
+from stegano.gui.config_param import ConfigParam, ConfigType, FloatParam, RadioParam
 from stegano.util import StringUtil
 
 
@@ -10,11 +11,9 @@ class ConfigBox(QGroupBox):
     def __init__(self):
         super(ConfigBox, self).__init__()
 
-        self._state_engine_option_loaded: bool = False
-        self._state_engine_option: List[Dict[str, str]] = []
+        self._state_engine_option: List[ConfigParam] = []
         self._state_use_encryption = True
-
-        self._engine_option_group: List[QButtonGroup] = []
+        self._state_engine_option_holder: List[Union[QButtonGroup, QDoubleSpinBox]] = []
 
         self._setup_ui()
 
@@ -65,48 +64,63 @@ class ConfigBox(QGroupBox):
 
         self.setLayout(self._main_layout)
 
-    def set_engine_option(self, engine_option: List[Dict[str, str]]):
-        if self._state_engine_option_loaded:
-            self._state_engine_option_loaded = False
-            self._main_layout.removeRow(2)
+    def set_engine_option(self, engine_option: List[ConfigParam]):
+        row_count = self._main_layout.rowCount()
+
+        for i in range(row_count - 1, 1, -1):
+            self._main_layout.removeRow(i)
 
         if len(engine_option) == 0:
             return
 
         self._state_engine_option = engine_option
+        self._state_engine_option_holder.clear()
 
-        engine_option_label = QLabel()
-        engine_option_label.setText('Engine param')
-        engine_option_layout = QVBoxLayout()
-        self._engine_option_group.clear()
+        for param in engine_option:
+            engine_option_label = QLabel()
+            engine_option_label.setText(param.title)
 
-        for option in engine_option:
-            option_group = QButtonGroup()
-            button_layout = QHBoxLayout()
-            for idx, (key, value) in enumerate(option.items()):
-                radio_btn = QRadioButton()
-                radio_btn.setText(value)
-                if idx == 0:
-                    radio_btn.setChecked(True)
+            if param.config_type == ConfigType.RADIO:
+                assert isinstance(param, RadioParam)
 
-                option_group.addButton(radio_btn)
-                option_group.setId(radio_btn, idx)
-                button_layout.addWidget(radio_btn)
+                option_group = QButtonGroup()
+                button_layout = QHBoxLayout()
+                for idx, (key, value) in enumerate(param.options.items()):
+                    radio_btn = QRadioButton()
+                    radio_btn.setText(value)
+                    if idx == 0:
+                        radio_btn.setChecked(True)
 
-            engine_option_layout.addLayout(button_layout)
-            self._engine_option_group.append(option_group)
+                    option_group.addButton(radio_btn)
+                    option_group.setId(radio_btn, idx)
+                    button_layout.addWidget(radio_btn)
 
-        self._state_engine_option_loaded = True
-        self._main_layout.addRow(engine_option_label, engine_option_layout)
+                self._main_layout.addRow(engine_option_label, button_layout)
+                self._state_engine_option_holder.append(option_group)
+            elif param.config_type == ConfigType.FLOAT:
+                assert isinstance(param, FloatParam)
+                spinbox = QDoubleSpinBox()
+                spinbox.setValue(param.default)
+                spinbox.setMinimum(0)
+                spinbox.setSingleStep(param.step)
+                self._state_engine_option_holder.append(spinbox)
+                self._main_layout.addRow(engine_option_label, spinbox)
 
     @property
-    def config(self) -> Tuple[str, List[str]]:
+    def config(self) -> Tuple[str, List[Union[str, float]]]:
         encryption_key = '' if not self._state_use_encryption else self._encrypt_password.text()
 
         engine_param = []
-        for idx, group in enumerate(self._engine_option_group):
-            option = self._state_engine_option[idx]
-            engine_param.append(list(option.keys())[group.checkedId()])
+        for idx, param in enumerate(self._state_engine_option):
+            holder = self._state_engine_option_holder[idx]
+            if param.config_type == ConfigType.FLOAT:
+                assert isinstance(holder, QDoubleSpinBox)
+                engine_param.append(holder.value())
+            else:
+                assert isinstance(holder, QButtonGroup)
+                assert isinstance(param, RadioParam)
+                option = param.options
+                engine_param.append(list(option.keys())[holder.checkedId()])
 
         return encryption_key, engine_param
 
