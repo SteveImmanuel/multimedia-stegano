@@ -2,6 +2,7 @@ import os
 from typing import List, Union
 
 import numpy as np
+from PIL import Image
 from imageio import imread, imwrite
 
 from stegano.engine import BaseEngine
@@ -26,6 +27,12 @@ class ImageEngine(BaseEngine):
         ]
 
     @staticmethod
+    def get_extract_option() -> List[ConfigParam]:
+        return [
+            RadioParam('Method', {CONCEAL_BPCS: 'BPCS', CONCEAL_LSB: 'LSB'}),
+        ]
+
+    @staticmethod
     def get_supported_extensions() -> List[str]:
         return ['png', 'bmp']
 
@@ -45,8 +52,8 @@ class ImageEngine(BaseEngine):
             encryption_key: str,
             config: List[str],
     ) -> None:
-        is_random = False
-        is_lsb = True
+        is_lsb = config[1] == CONCEAL_LSB
+        is_random = config[2] == CONCEAL_RANDOM
 
         file_in_extension = os.path.splitext(file_in_path)[-1].lower()
 
@@ -151,8 +158,8 @@ class ImageEngine(BaseEngine):
 
 
 if __name__ == '__main__':
-    # ImageEngine.conceal('sample.png', 'simple.txt', 'out.png', '', [])
+    # ImageEngine.conceal('exif.png', 'simple.txt', 'out.png', '', [True, CONCEAL_LSB, CONCEAL_SEQ])
     # ImageEngine.extract('out.png', 'out_simple.txt', '')
 
-    ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [])
+    ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [True, CONCEAL_LSB, CONCEAL_SEQ])
     ImageEngine.extract('out', 'extracted.txt', 'a')
