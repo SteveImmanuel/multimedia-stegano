@@ -2,6 +2,7 @@ import math
 import tempfile
 import os
 import uuid
+import shutil
 
 from typing import List, Dict, Tuple
 
@@ -56,6 +57,10 @@ class FileUtil:
     @staticmethod
     def get_temp_out_name() -> str:
         return os.path.join(tempfile.gettempdir(), str(uuid.uuid4()))
+
+    @staticmethod
+    def move_file(source: str, dest: str):
+        shutil.move(source, dest)
 
 
 if __name__ == "__main__":

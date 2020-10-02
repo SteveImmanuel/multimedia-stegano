@@ -2,7 +2,7 @@ import os
 import wave
 import math
 
-from typing import List
+from typing import List, Union
 
 from stegano.engine.base_engine import BaseEngine
 from stegano.util.file_util import FileUtil
@@ -27,14 +27,15 @@ class AudioEngine(BaseEngine):
         config: List[str],
     ) -> None:
         is_encrypt, is_random = AudioEngine.parse_config(config)
+        _, ext = os.path.basename(file_in_path).split('.')
 
-        # TODO: convert to wav if file format is wrong or raise exception, await further development
-        filename, ext = os.path.basename(file_in_path).split('.')
-        if ext.lower() != 'wav':
-            raise OSError(f'Extension must be .wav, got .{ext}')
+        if is_encrypt:
+            real_message_path = AudioEngine.encrypt(message_file_path, encryption_key)
+        else:
+            real_message_path = message_file_path
 
         cover_obj = wave.open(file_in_path, 'rb')
-        secret_msg_len = os.path.getsize(message_file_path) * 8  # in bit
+        secret_msg_len = os.path.getsize(real_message_path) * 8  # in bit
         max_file_size = cover_obj.getnframes() * 4  # in bit
 
         metadata = FileUtil.gen_metadata(secret_msg_len, max_file_size, ext)
@@ -59,7 +60,7 @@ class AudioEngine(BaseEngine):
         with wave.open(file_out_path, 'wb') as stego:
             stego.setparams(cover_obj.getparams())
 
-            with open(message_file_path, 'rb') as secret:
+            with open(real_message_path, 'rb') as secret:
                 # set header, format, etc
                 for i in range(len(metadata)):
                     bit = metadata[i]
@@ -95,11 +96,9 @@ class AudioEngine(BaseEngine):
         cover_obj.close()
 
     @staticmethod
-    def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> None:
+    def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> str:
 
         filename, ext = os.path.basename(file_in_path).split('.')
-        if ext.lower() != 'wav':
-            raise OSError(f'Extension must be .wav, got .{ext}')
 
         stego_obj = wave.open(file_in_path, 'rb')
         max_file_size = stego_obj.getnframes() * 4
@@ -126,7 +125,8 @@ class AudioEngine(BaseEngine):
         else:
             sequence_index = [i + metadata_len for i in range(secret_msg_len)]
 
-        with open(extract_file_path, 'wb') as secret:
+        temp_file = FileUtil.get_temp_out_name()
+        with open(temp_file, 'wb') as secret:
             i = 0
             temp_byte = []
             for idx_stego in sequence_index:
@@ -139,6 +139,15 @@ class AudioEngine(BaseEngine):
                     byte = bytes([FileUtil.binary_to_dec(temp_byte)])
                     secret.write(byte)
                     temp_byte.clear()
+        stego_obj.close()
+
+        if is_encrypt:
+            out_path = AudioEngine.decrypt(temp_file, encryption_key)
+        else:
+            out_path = temp_file
+        FileUtil.move_file(out_path, extract_file_path)
+
+        return f'extracted_{filename}.{ext}'
 
     @staticmethod
     def count_psnr(stego_filepath: str, original_filepath: str) -> float:
@@ -191,13 +200,3 @@ class AudioEngine(BaseEngine):
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         cover_obj = wave.open(file_path, 'rb')
         return cover_obj.getnframes() * 4 // 8
-
-
-if __name__ == "__main__":
-    audio_engine = AudioEngine()
-    base_path = '/home/steve/Git/multimedia-stegano/'
-    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/a.txt',
-                         f'{base_path}/testbuffer.wav', 'test123', [True, CONCEAL_RANDOM])
-    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
-    psnr = audio_engine.count_psnr(f'{base_path}/testbuffer.wav', f'{base_path}/new.wav')
-    print(psnr)

@@ -26,7 +26,7 @@ class BaseEngine(ABC):
         file_in_path: str,
         extract_file_path: str,
         encryption_key: str,
-    ) -> None:
+    ) -> str:
         pass
 
     @staticmethod
