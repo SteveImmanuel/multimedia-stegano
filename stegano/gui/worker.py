@@ -15,10 +15,8 @@ class Worker(QRunnable):
 
     def run(self):
         try:
-            print('running')
             self.function()
             self.signal.success.emit(None)
-            print('emit')
         except Exception as e:
             print(e)
             self.signal.error.emit(str(e))
