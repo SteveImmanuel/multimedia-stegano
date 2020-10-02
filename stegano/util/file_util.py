@@ -1,4 +1,7 @@
 import math
+import tempfile
+import os
+import uuid
 
 from typing import List, Dict, Tuple
 
@@ -49,6 +52,10 @@ class FileUtil:
         secret_msg_len = FileUtil.binary_to_dec(metadata)
 
         return (secret_msg_len, ext)
+
+    @staticmethod
+    def get_temp_out_name() -> str:
+        return os.path.join(tempfile.gettempdir(), str(uuid.uuid4()))
 
 
 if __name__ == "__main__":

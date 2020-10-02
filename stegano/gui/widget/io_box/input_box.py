@@ -62,7 +62,7 @@ class InputBox(QGroupBox):
         file_url = QUrl.fromLocalFile(self._path_input.path_input.text())
         QDesktopServices.openUrl(file_url)
 
-    def _on_path_changed(self, new_text):
+    def _on_path_changed(self, new_text: str):
         self._file_valid = path.exists(new_text)
         self._set_button_state()
 

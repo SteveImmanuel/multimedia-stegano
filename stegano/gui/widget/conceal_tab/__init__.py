@@ -11,6 +11,7 @@ from stegano.gui.widget.conceal_tab.summary_box import SummaryBox
 from stegano.gui.widget.config_box import ConfigBox
 from stegano.gui.widget.io_box import InputBox, OutputBox
 from stegano.gui.worker import Worker
+from stegano.util import FileUtil
 
 
 class ConcealTab(QWidget):
@@ -22,6 +23,7 @@ class ConcealTab(QWidget):
         self._state_config_valid = False
         self._state_input_loaded = False
         self._state_message_loaded = False
+        self._state_output_path = ''
 
         self._setup_ui()
 
@@ -69,6 +71,7 @@ class ConcealTab(QWidget):
         self._check_requirement()
 
     def _process_prereq(self):
+        self._file_output_box.path_output.setText('')
         self._summary_box.set_message('Loading...')
         self._summary_box.set_file_detail('-', 0)
         self._config_box.set_engine_option([])
@@ -129,11 +132,25 @@ class ConcealTab(QWidget):
 
     def _on_conceal(self):
         config = self._config_box.config
-        worker = Worker(lambda: self._state_engine.conceal('', '', '', config[0], config[1]))
-        worker.signal.success.connect(lambda: self._loading_dialog.close())
+
+        out_path = FileUtil.get_temp_out_name()
+        in_path = self._file_input_box.path_input.text()
+        msg_path = self._message_input_box.path_input.text()
+
+        self._state_output_path = out_path
+
+        worker = Worker(
+            lambda: self._state_engine.conceal(in_path, msg_path, out_path, config[0], config[1])
+        )
+        worker.signal.success.connect(self._on_conceal_success)
         worker.signal.error.connect(self._on_conceal_error)
         QThreadPool.globalInstance().start(worker)
         self._loading_dialog.exec()
+
+    def _on_conceal_success(self):
+        out_path = self._state_output_path
+        self._file_output_box.path_output.setText(out_path)
+        self._loading_dialog.close()
 
     def _on_conceal_error(self, msg: str):
         self._loading_dialog.close()
