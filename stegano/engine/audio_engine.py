@@ -2,17 +2,16 @@ import os
 import wave
 import math
 
-from typing import List, Dict
+from typing import List
 
 from stegano.engine.base_engine import BaseEngine
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
+from stegano.gui.config_param import RadioParam, ConfigParam
 
 FRAME_SIZE = 500000
 CONCEAL_RANDOM = 'conc_rand'
 CONCEAL_SEQ = 'conc_seq'
-ENCRYPT_ON = 'enc_on'
-ENCRYPT_OFF = 'enc_off'
 
 
 class AudioEngine(BaseEngine):
@@ -27,7 +26,7 @@ class AudioEngine(BaseEngine):
         encryption_key: str,
         config: List[str],
     ) -> None:
-        is_random, is_encrypt = AudioEngine.parse_config(config)
+        is_encrypt, is_random = AudioEngine.parse_config(config)
 
         # TODO: convert to wav if file format is wrong or raise exception, await further development
         filename, ext = os.path.basename(file_in_path).split('.')
@@ -169,20 +168,14 @@ class AudioEngine(BaseEngine):
         return byte
 
     @staticmethod
-    def get_conceal_option() -> List[Dict[str, str]]:
-        return [{
-            CONCEAL_SEQ: 'Conceal Sequentially',
-            CONCEAL_RANDOM: 'Conceal Randomly'
-        }, {
-            ENCRYPT_ON: 'Encrypt First',
-            ENCRYPT_OFF: 'No Encryption'
-        }]
+    def get_conceal_option() -> List[ConfigParam]:
+        return [RadioParam('Order', {CONCEAL_RANDOM: 'Sequential', CONCEAL_SEQ: 'Random'})]
 
     @staticmethod
     def parse_config(config: List[str]) -> List[bool]:
         res = [None] * 2
-        res[0] = True if config[0] == CONCEAL_RANDOM else False
-        res[1] = True if config[1] == ENCRYPT_ON else False
+        res[0] = config[0]
+        res[1] = True if config[1] == CONCEAL_RANDOM else False
         return res
 
     @staticmethod
@@ -195,16 +188,16 @@ class AudioEngine(BaseEngine):
         return ext.lower() == 'wav'
 
     @staticmethod
-    def get_max_message(filepath: str) -> int:
-        cover_obj = wave.open(filepath, 'rb')
+    def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
+        cover_obj = wave.open(file_path, 'rb')
         return cover_obj.getnframes() * 4 // 8
 
 
 if __name__ == "__main__":
     audio_engine = AudioEngine()
-    base_path = '/home/steve/Git/multimedia-stegano/stegano/engine'
-    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/test.py',
-                         f'{base_path}/testbuffer.wav', 'test123', [CONCEAL_RANDOM, ENCRYPT_ON])
-    audio_engine.extract(f'{base_path}/testbuffer.wav', 'a.txt', 'test123')
+    base_path = '/home/steve/Git/multimedia-stegano/'
+    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/a.txt',
+                         f'{base_path}/testbuffer.wav', 'test123', [True, CONCEAL_RANDOM])
+    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
     psnr = audio_engine.count_psnr(f'{base_path}/testbuffer.wav', f'{base_path}/new.wav')
     print(psnr)

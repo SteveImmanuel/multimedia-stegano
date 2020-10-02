@@ -54,9 +54,7 @@ class BaseEngine(ABC):
         data = Data(DataType.FILE, data=filepath, extended=True)
         key = Key(KeyType.STRING, [enc_key])
         result = BaseEngine.encrypt_engine.encrypt(data, key)
-        print(result.path)
         return result.path
-        pass
 
     @staticmethod
     def decrypt(filepath: str, enc_key: str) -> str:
