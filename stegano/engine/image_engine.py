@@ -1,8 +1,9 @@
-from typing import List, Dict, Union
-
-from imageio import imread, imwrite
 import os
+from typing import List, Union
+
 import numpy as np
+from imageio import imread, imwrite
+
 from stegano.engine import BaseEngine
 from stegano.gui.config_param import RadioParam, ConfigParam, FloatParam
 from stegano.util import RandomUtil, FileUtil
@@ -55,22 +56,27 @@ class ImageEngine(BaseEngine):
         secret_file_extension = os.path.splitext(secret_file_path)[-1][1:].lower()
         secret_file_len = os.path.getsize(secret_file_path) * 8  # in bit
 
-        if is_lsb:
-            max_file_size = int(np.prod(image_shape))
-            metadata = FileUtil.gen_metadata(secret_file_len, max_file_size, secret_file_extension)
-            metadata.append(0)
+        max_file_size = int(np.prod(image_shape))
+        metadata = FileUtil.gen_metadata(secret_file_len, max_file_size, secret_file_extension)
 
-            metadata_len = FileUtil.get_metadata_len(max_file_size)
-            metadata_len += 2
+        metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+
+        if is_lsb:
             min_pos = np.unravel_index(metadata_len, image_shape)
 
             assert is_random
-            metadata.append(0)
+            metadata.append(1)
             seed = RandomUtil.get_seed_from_string(encryption_key)
             sequence = RandomUtil.get_random_sequence(min_pos, image_shape, secret_file_len, seed)
             sequence.sort(key=lambda x: x[1])
 
             secret_file_handle = open(secret_file_path, 'rb')
+
+            image_flatten_view = image.ravel()
+
+            # Insert metadata
+            for i in range(metadata_len):
+                image_flatten_view[i] = (image_flatten_view[i] & 254) | metadata[i]
 
             for position, idx in sequence:
                 bit_position = idx % 8
@@ -82,15 +88,56 @@ class ImageEngine(BaseEngine):
                 image[position] = (image[position] & 254) | secret_bit
 
             imwrite(file_out_path, image, file_in_extension)
+            secret_file_handle.close()
 
         else:
             raise RuntimeError('Not supported yet :(')
 
     @staticmethod
     def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> None:
-        pass
+        is_random = True
+        is_lsb = True
+
+        image = imread(file_in_path)
+        image_shape = image.shape
+
+        output_handle = open(extract_file_path, 'wb')
+        seed = RandomUtil.get_seed_from_string(encryption_key)
+
+
+        if is_lsb:
+            max_file_size = int(np.prod(image_shape))
+            metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+
+            # Baca metadata
+            metadata_frame = list(image.ravel()[:metadata_len] & 1)
+            is_random = metadata_frame.pop() == 1
+
+            secret_file_len, secret_file_ext = FileUtil.extract_metadata(metadata_frame)
+
+            assert is_random
+            min_pos = np.unravel_index(metadata_len, image_shape)
+            sequence = RandomUtil.get_random_sequence(min_pos, image_shape, secret_file_len, seed)
+            sequence.sort(key=lambda x: x[1])
+
+            temp_byte = []
+            for position, idx in sequence:
+                temp_byte.append(image[position] & 1)
+
+                if idx % 8 == 7:
+                    byte = bytes([FileUtil.binary_to_dec(temp_byte)])
+                    output_handle.write(byte)
+                    temp_byte.clear()
+
+            output_handle.close()
+
+        else:
+            raise RuntimeError('Not supported yet :(')
 
 
 if __name__ == '__main__':
-    # ImageEngine.conceal('sample.png', 'simple.txt', 'out.png', '', [])
-    ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', '', [])
+    ImageEngine.conceal('sample.png', 'simple.txt', 'out.png', '', [])
+    ImageEngine.extract('out.png', 'out_simple.txt', '')
+
+    # ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [])
+    # ImageEngine.extract('out', 'extracted.txt', 'a')
