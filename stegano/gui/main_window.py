@@ -17,7 +17,7 @@ class MainWindow(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle('Steganography')
-        self.setMinimumSize(500, 600)
+        self.setMinimumSize(500, 650)
 
         self._conceal_tab = ConcealTab()
         self._extract_tab = ExtractTab()
