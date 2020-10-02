@@ -3,24 +3,29 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Union
 
 from stegano.gui.config_param import ConfigParam
+from crypto.engine.extended_vigenere_engine import ExtendedVigenereEngine
+from crypto.engine.data import *
+from crypto.engine.key import *
 
 
 class BaseEngine(ABC):
+    encrypt_engine = ExtendedVigenereEngine()
+
     @staticmethod
     def conceal(
-            file_in_path: str,
-            secret_file_path: str,
-            file_out_path: str,
-            encryption_key: str,
-            config: List[Union[str, float]],
+        file_in_path: str,
+        secret_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[Union[str, float]],
     ) -> None:
         pass
 
     @staticmethod
     def extract(
-            file_in_path: str,
-            extract_file_path: str,
-            encryption_key: str,
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
     ) -> None:
         pass
 
@@ -43,3 +48,19 @@ class BaseEngine(ABC):
     @abstractmethod
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         pass
+
+    @staticmethod
+    def encrypt(filepath: str, enc_key: str) -> str:
+        data = Data(DataType.FILE, data=filepath, extended=True)
+        key = Key(KeyType.STRING, [enc_key])
+        result = BaseEngine.encrypt_engine.encrypt(data, key)
+        print(result.path)
+        return result.path
+        pass
+
+    @staticmethod
+    def decrypt(filepath: str, enc_key: str) -> str:
+        data = Data(DataType.FILE, data=filepath, extended=True)
+        key = Key(KeyType.STRING, [enc_key])
+        result = BaseEngine.encrypt_engine.decrypt(data, key)
+        return result.path
