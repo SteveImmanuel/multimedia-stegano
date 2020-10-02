@@ -45,7 +45,6 @@ class VideoEngine(BaseEngine):
         _, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
         random.seed(seed)
 
-        print(config, min_pos, video_shape, message_len, seed)
         if not is_frame_seq and not is_pixel_seq:
             return RandomUtil.get_random_sequence(min_pos, video_shape, message_len, random.random())
 
@@ -138,10 +137,7 @@ class VideoEngine(BaseEngine):
                 config: List[Union[str, float]]) -> None:
         is_encrypt, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
         VideoEngine.check_key(encryption_key)
-
-        filename, ext = os.path.basename(file_in_path).split('.')
-        if ext.lower() not in VideoEngine.get_supported_extensions():
-            raise OSError(f'Extension .{ext} not supported')
+        _, ext = os.path.basename(message_file_path).split('.')
 
         video_reader = skvideo.io.FFmpegReader(file_in_path)
         video_writer = skvideo.io.FFmpegWriter(
@@ -166,16 +162,14 @@ class VideoEngine(BaseEngine):
             VideoEngine.get_conceal_option())  # 3 bit for 3 option
 
         min_pos = np.unravel_index(metadata_len, video_shape)
-
-        message_handle = open(message_file_path, 'rb')
-
         seed = RandomUtil.get_seed_from_string(encryption_key)
         pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len, seed)
 
         metadata.append(0)
+        used_message_file_path = message_file_path
         if is_encrypt:
             metadata[-1] = 1
-            # TODO encrypt
+            used_message_file_path = VideoEngine.encrypt(message_file_path, encryption_key)
 
         metadata.append(1) if is_frame_seq else metadata.append(0)
         metadata.append(1) if is_pixel_seq else metadata.append(0)
@@ -184,40 +178,41 @@ class VideoEngine(BaseEngine):
         random_pixel_sequence_idx = 0
         pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
 
-        for read_frame in video_reader.nextFrame():
-            frame = read_frame.copy()
+        with open(used_message_file_path, 'rb') as message_handle:
+            for read_frame in video_reader.nextFrame():
+                frame = read_frame.copy()
 
-            if current_video_frame == 0:
-                #  first frame, insert meta data
-                for i in range(len(metadata)):
-                    metadata_bit = metadata[i]
-                    # TODO generalize this
-                    it, idx = divmod(i, 3)
-                    location = 3 * it + (2 - idx)
-                    frame_byte = frame[np.unravel_index(location, video_shape)[1:]]
-                    frame[np.unravel_index(location, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
+                if current_video_frame == 0:
+                    #  first frame, insert meta data
+                    for i in range(len(metadata)):
+                        metadata_bit = metadata[i]
+                        # TODO generalize this
+                        it, idx = divmod(i, 3)
+                        location = 3 * it + (2 - idx)
+                        frame_byte = frame[np.unravel_index(location, video_shape)[1:]]
+                        frame[np.unravel_index(location, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
 
-            pixel_frame_location = pixel_location_in_video[0]
-            while pixel_frame_location == current_video_frame:
-                byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
-                message_handle.seek(byte_location_in_message)
-                message_byte = message_handle.read(1)  # read 1 byte
-                message_bit = ord(message_byte) >> (7 - bit_location_in_byte) & 1  # 0 location is from left
-
-                pixel_location_in_frame = VideoEngine.rgb_to_bgr(pixel_location_in_video[1:])
-                frame[pixel_location_in_frame] &= 254
-                frame[pixel_location_in_frame] |= message_bit
-
-                random_pixel_sequence_idx += 1
-                if random_pixel_sequence_idx >= len(pixel_sequence):
-                    # all bit in message have been embedded
-                    break
-
-                pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
                 pixel_frame_location = pixel_location_in_video[0]
+                while pixel_frame_location == current_video_frame:
+                    byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
+                    message_handle.seek(byte_location_in_message)
+                    message_byte = message_handle.read(1)  # read 1 byte
+                    message_bit = ord(message_byte) >> (7 - bit_location_in_byte) & 1  # 0 location is from left
 
-            video_writer.writeFrame(frame)
-            current_video_frame += 1
+                    pixel_location_in_frame = VideoEngine.rgb_to_bgr(pixel_location_in_video[1:])
+                    frame[pixel_location_in_frame] &= 254
+                    frame[pixel_location_in_frame] |= message_bit
+
+                    random_pixel_sequence_idx += 1
+                    if random_pixel_sequence_idx >= len(pixel_sequence):
+                        # all bit in message have been embedded
+                        break
+
+                    pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
+                    pixel_frame_location = pixel_location_in_video[0]
+
+                video_writer.writeFrame(frame)
+                current_video_frame += 1
 
         video_writer.close()  # close the writer
 
@@ -226,14 +221,13 @@ class VideoEngine(BaseEngine):
             file_in_path: str,
             extract_file_path: str,
             encryption_key: str,
-    ):
+            config: List[Union[str, float, bool]],
+    ) -> str:
         VideoEngine.check_key(encryption_key)
 
         filename, ext = os.path.basename(file_in_path).split('.')
         if ext.lower() not in VideoEngine.get_supported_extensions():
             raise OSError(f'Extension .{ext} not supported')
-
-        message_output_handler = open(extract_file_path, 'wb')
 
         video_capture = cv2.VideoCapture(file_in_path)
         assert video_capture.isOpened()
@@ -270,31 +264,34 @@ class VideoEngine(BaseEngine):
 
         temp_byte = 0
         assign_count = 0
-        for pixel_location_in_video, _ in pixel_sequence:
-            frame_pos = pixel_location_in_video[0]
-            video_capture.set(1, frame_pos)  # set next frame
-            ret_status, frame = video_capture.read()
 
-            if not ret_status:
-                # error occur not reach end of pixel_sequence
-                print('An error occur while extracting message')
-                break
+        temp_file = FileUtil.get_temp_out_name()
+        with open(temp_file, 'wb') as message_output_handler:
+            for pixel_location_in_video, _ in pixel_sequence:
+                frame_pos = pixel_location_in_video[0]
+                video_capture.set(1, frame_pos)  # set next frame
+                ret_status, frame = video_capture.read()
 
-            message_bit = frame[pixel_location_in_video[1:]] & 1
-            # print(message_bit)
-            temp_byte <<= 1
-            temp_byte |= message_bit
-            assign_count += 1
+                if not ret_status:
+                    # error occur not reach end of pixel_sequence
+                    print('An error occur while extracting message')
+                    break
 
-            if assign_count == 8:
-                message_output_handler.write(bytes([temp_byte]))
-                temp_byte = 0
-                assign_count = 0
+                message_bit = frame[pixel_location_in_video[1:]] & 1
+                temp_byte <<= 1
+                temp_byte |= message_bit
+                assign_count += 1
+
+                if assign_count == 8:
+                    message_output_handler.write(bytes([temp_byte]))
+                    temp_byte = 0
+                    assign_count = 0
 
         video_capture.release()
 
+        temp_file_path = temp_file
         if is_encrypt:
-            # TODO decrypt
-            pass
+            temp_file_path = VideoEngine.decrypt(temp_file, encryption_key)
+        FileUtil.move_file(temp_file_path, extract_file_path)
 
         return extract_file_path + '.' + ext
