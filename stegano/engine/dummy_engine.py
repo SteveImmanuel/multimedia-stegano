@@ -26,8 +26,8 @@ class DummyEngine(BaseEngine):
         return file_path.endswith('txt') and file_path.startswith('text')
 
     @staticmethod
-    def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
-        return int(100000 * option[1])
+    def get_max_message(file_path: str, option: List[Union[str, float, bool]]) -> int:
+        return int(100000 * option[2])
 
     @staticmethod
     def conceal(
@@ -35,7 +35,7 @@ class DummyEngine(BaseEngine):
             secret_file_path: str,
             file_out_path: str,
             encryption_key: str,
-            config: List[Union[str, float]],
+            config: List[Union[str, float, bool]],
     ) -> str:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)

@@ -13,19 +13,19 @@ class BaseEngine(ABC):
 
     @staticmethod
     def conceal(
-        file_in_path: str,
-        secret_file_path: str,
-        file_out_path: str,
-        encryption_key: str,
-        config: List[Union[str, float]],
+            file_in_path: str,
+            secret_file_path: str,
+            file_out_path: str,
+            encryption_key: str,
+            config: List[Union[str, float, bool]],
     ) -> None:
         pass
 
     @staticmethod
     def extract(
-        file_in_path: str,
-        extract_file_path: str,
-        encryption_key: str,
+            file_in_path: str,
+            extract_file_path: str,
+            encryption_key: str,
     ) -> str:
         pass
 
@@ -46,7 +46,7 @@ class BaseEngine(ABC):
 
     @staticmethod
     @abstractmethod
-    def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
+    def get_max_message(file_path: str, option: List[Union[str, float, bool]]) -> int:
         pass
 
     @staticmethod

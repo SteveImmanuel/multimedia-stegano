@@ -29,7 +29,7 @@ class ConfigBox(QGroupBox):
         self._encrypt_option_label = QLabel()
         self._encrypt_option_label.setText('Encryption')
         self._encrypt_password_label = QLabel()
-        self._encrypt_password_label.setText('Password')
+        self._encrypt_password_label.setText('Key')
 
         # Encryption radio
         self._encrypt_option_group = QButtonGroup()
@@ -113,10 +113,10 @@ class ConfigBox(QGroupBox):
                 self._main_layout.addRow(engine_option_label, spinbox)
 
     @property
-    def config(self) -> Tuple[str, List[Union[str, float]]]:
-        encryption_key = '' if not self._state_use_encryption else self._encrypt_password.text()
+    def config(self) -> Tuple[str, List[Union[str, float, bool]]]:
+        encryption_key = self._encrypt_password.text()
 
-        engine_param = []
+        engine_param = [self._state_use_encryption]
         for idx, param in enumerate(self._state_engine_option):
             holder = self._state_engine_option_holder[idx]
             if param.config_type == ConfigType.FLOAT:
@@ -131,5 +131,5 @@ class ConfigBox(QGroupBox):
         return encryption_key, engine_param
 
     def _on_radio_selected(self):
-        self._encrypt_password.setDisabled(self._encrypt_option_group.checkedId() == 0)
+        # self._encrypt_password.setDisabled(self._encrypt_option_group.checkedId() == 0)
         self._state_use_encryption = self._encrypt_option_group.checkedId() == 1
