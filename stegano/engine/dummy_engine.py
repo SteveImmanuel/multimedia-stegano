@@ -26,10 +26,17 @@ class DummyEngine(BaseEngine):
         return 100000
 
     @staticmethod
-    def conceal(file_in_path: str, secret_file_path: str, file_out_path: str, encryption_key: str,
-                config: List[str]) -> None:
+    def conceal(
+        file_in_path: str,
+        secret_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[str],
+    ) -> None:
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)
+        with open(file_out_path, 'w') as file:
+            file.write('Hello, this is test')
         print('Done concealment')
 
     @staticmethod
