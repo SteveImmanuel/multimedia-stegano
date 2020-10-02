@@ -53,6 +53,8 @@ class ImageEngine(BaseEngine):
         image = imread(file_in_path)
         image_shape = image.shape
 
+        image_flatten_view = image.ravel()
+
         secret_file_extension = os.path.splitext(secret_file_path)[-1][1:].lower()
         secret_file_len = os.path.getsize(secret_file_path) * 8  # in bit
 
@@ -64,40 +66,33 @@ class ImageEngine(BaseEngine):
         secret_file_handle = open(secret_file_path, 'rb')
 
         if is_lsb:
-            min_pos = np.unravel_index(metadata_len, image_shape)
-
-            metadata.append(1 if is_random else 0)
-            image_flatten_view = image.ravel()
-
             # Insert metadata
+            metadata.append(1 if is_random else 0)
             for i in range(metadata_len):
                 image_flatten_view[i] = (image_flatten_view[i] & 254) | metadata[i]
 
+            # Generate sequence
             if is_random:
+                min_pos = np.unravel_index(metadata_len, image_shape)
                 seed = RandomUtil.get_seed_from_string(encryption_key)
                 sequence = RandomUtil.get_random_sequence(min_pos, image_shape, secret_file_len,
                                                           seed)
                 sequence.sort(key=lambda x: x[1])
-
-                for position, idx in sequence:
-                    bit_position = idx % 8
-                    if bit_position == 0:
-                        current_byte = secret_file_handle.read(1)
-
-                    # noinspection PyUnboundLocalVariable
-                    secret_bit = ord(current_byte) >> (7 - bit_position) & 1
-                    image[position] = (image[position] & 254) | secret_bit
             else:
-                for idx in range(secret_file_len):
-                    bit_position = idx % 8
-                    if bit_position == 0:
-                        current_byte = secret_file_handle.read(1)
+                sequence = [(idx + metadata_len, idx) for idx in range(secret_file_len)]
 
-                    # noinspection PyUnboundLocalVariable
-                    secret_bit = ord(current_byte) >> (7 - bit_position) & 1
-                    img_idx = idx + metadata_len
-                    image_flatten_view[img_idx] = (image_flatten_view[img_idx] & 254) | secret_bit
+            # Insert to image
+            for position, idx in sequence:
+                bit_position = idx % 8
+                if bit_position == 0:
+                    current_byte = secret_file_handle.read(1)
 
+                # noinspection PyUnboundLocalVariable
+                secret_bit = ord(current_byte) >> (7 - bit_position) & 1
+                if is_random:
+                    image[position] = (image[position] & 254) | secret_bit
+                else:
+                    image_flatten_view[position] = (image_flatten_view[position] & 254) | secret_bit
 
         else:
             raise RuntimeError('Not supported yet :(')
@@ -126,29 +121,28 @@ class ImageEngine(BaseEngine):
             is_random = metadata_frame.pop() == 1
             secret_file_len, secret_file_ext = FileUtil.extract_metadata(metadata_frame)
 
+            # Buat sequence
             if is_random:
                 min_pos = np.unravel_index(metadata_len, image_shape)
                 sequence = RandomUtil.get_random_sequence(min_pos, image_shape, secret_file_len,
                                                           seed)
                 sequence.sort(key=lambda x: x[1])
 
-                temp_byte = []
-                for position, idx in sequence:
-                    temp_byte.append(image[position] & 1)
-
-                    if idx % 8 == 7:
-                        byte = bytes([FileUtil.binary_to_dec(temp_byte)])
-                        output_handle.write(byte)
-                        temp_byte.clear()
             else:
-                temp_byte = []
-                for idx in range(secret_file_len):
-                    temp_byte.append(image_flatten_view[idx + metadata_len] & 1)
+                sequence = [(idx + metadata_len, idx) for idx in range(secret_file_len)]
 
-                    if idx % 8 == 7:
-                        byte = bytes([FileUtil.binary_to_dec(temp_byte)])
-                        output_handle.write(byte)
-                        temp_byte.clear()
+            # Output
+            temp_byte = []
+            for position, idx in sequence:
+                if is_random:
+                    temp_byte.append(image[position] & 1)
+                else:
+                    temp_byte.append(image_flatten_view[position] & 1)
+
+                if idx % 8 == 7:
+                    byte = bytes([FileUtil.binary_to_dec(temp_byte)])
+                    output_handle.write(byte)
+                    temp_byte.clear()
 
             output_handle.close()
 
@@ -157,8 +151,8 @@ class ImageEngine(BaseEngine):
 
 
 if __name__ == '__main__':
-    ImageEngine.conceal('sample.png', 'simple.txt', 'out.png', '', [])
-    ImageEngine.extract('out.png', 'out_simple.txt', '')
+    # ImageEngine.conceal('sample.png', 'simple.txt', 'out.png', '', [])
+    # ImageEngine.extract('out.png', 'out_simple.txt', '')
 
-    # ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [])
-    # ImageEngine.extract('out', 'extracted.txt', 'a')
+    ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [])
+    ImageEngine.extract('out', 'extracted.txt', 'a')
