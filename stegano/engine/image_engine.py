@@ -60,13 +60,14 @@ class ImageEngine(BaseEngine):
             file_out_path: str,
             encryption_key: str,
             config: List[str],
-    ) -> None:
+    ) -> (str, float):
         is_lsb = config[1] == CONCEAL_LSB
         is_random = config[2] == CONCEAL_RANDOM
 
         file_in_extension = os.path.splitext(file_in_path)[-1].lower()
 
         image = imread(file_in_path)
+        original_image = image.copy()
         image_shape = image.shape
 
         image_flatten_view = image.ravel()
@@ -113,8 +114,13 @@ class ImageEngine(BaseEngine):
         else:
             raise RuntimeError('Not supported yet :(')
 
-        imwrite(file_out_path, image, file_in_extension)
+        imwrite(file_out_path + file_in_extension, image, file_in_extension)
         secret_file_handle.close()
+
+        mse = np.mean((original_image - image) ** 2)
+        psnr = 20 * np.log10(255 / np.sqrt(mse))
+
+        return file_out_path + file_in_extension, psnr
 
     @staticmethod
     def extract(
@@ -176,4 +182,4 @@ if __name__ == '__main__':
     # ImageEngine.extract('out.png', 'out_simple.txt', '')
 
     ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [True, CONCEAL_LSB, CONCEAL_SEQ])
-    ImageEngine.extract('out', 'extracted.txt', 'a',[True, CONCEAL_LSB])
+    ImageEngine.extract('out', 'extracted.txt', 'a', [True, CONCEAL_LSB])
