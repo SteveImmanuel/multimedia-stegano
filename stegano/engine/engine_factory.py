@@ -2,12 +2,13 @@ from enum import Enum
 from os import path
 from typing import Type, Union
 
-from stegano.engine import BaseEngine, DummyEngine, ImageEngine
+from stegano.engine import BaseEngine, DummyEngine, ImageEngine, VideoEngine
 
 
 class EngineType(Enum):
     DUMMY = 'Dummy engine'
     IMAGE = 'Image engine'
+    VIDEO = 'Video engine'
 
     @staticmethod
     def list():
@@ -38,6 +39,8 @@ class EngineFactory:
             return DummyEngine
         elif engine_type == EngineType.IMAGE:
             return ImageEngine
+        elif engine_type == EngineType.VIDEO:
+            return VideoEngine
         else:
             raise RuntimeError('Invalid engine')
 
