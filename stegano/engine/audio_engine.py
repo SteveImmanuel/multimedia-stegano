@@ -25,7 +25,7 @@ class AudioEngine(BaseEngine):
         file_out_path: str,
         encryption_key: str,
         config: List[str],
-    ) -> None:
+    ) -> (str, float):
         is_encrypt, is_random = AudioEngine.parse_config(config)
         _, ext = os.path.basename(message_file_path).split('.')
 
@@ -94,6 +94,9 @@ class AudioEngine(BaseEngine):
 
                 stego.writeframes(frame_bytes)
         cover_obj.close()
+
+        psnr = AudioEngine.count_psnr(file_out_path, file_in_path)
+        return (f'{file_out_path}.{ext}', psnr)
 
     @staticmethod
     def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> str:
@@ -203,10 +206,9 @@ class AudioEngine(BaseEngine):
 
 
 if __name__ == "__main__":
-    audio_engine = AudioEngine()
     base_path = '/home/steve/Git/multimedia-stegano/'
-    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/a.txt',
-                         f'{base_path}/testbuffer.wav', 'test123', [False, CONCEAL_RANDOM])
-    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
-    psnr = audio_engine.count_psnr(f'{base_path}/testbuffer.wav', f'{base_path}/new.wav')
-    print(psnr)
+    res = AudioEngine.conceal(f'{base_path}/new.wav', f'{base_path}/a.txt',
+                              f'{base_path}/testbuffer.wav', 'test123', [True, CONCEAL_RANDOM])
+    print(res)
+    res = AudioEngine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
+    print(res)
