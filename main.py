@@ -1,11 +1,4 @@
-import sys
+from stegano.__main__ import main
 
-from PyQt5.QtWidgets import QApplication
-
-from stegano.gui.main_window import MainWindow
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec_())
+if __name__ == '__main__':
+    main()
