@@ -62,12 +62,12 @@ class ImageEngine(BaseEngine):
             return (max_file_size - metadata_len) // 8
 
     @staticmethod
-    def _binary_to_gray(x: int) -> int:
+    def _binary_to_gray(x: Union[int, np.ndarray]) -> Union[int, np.ndarray]:
         shifted = x >> 1
         return shifted ^ x
 
     @staticmethod
-    def _gray_to_binary(x: int) -> int:
+    def _gray_to_binary(x: Union[int, np.ndarray]) -> Union[int, np.ndarray]:
         result = 0
         for i in range(8):
             result ^= x
@@ -83,6 +83,36 @@ class ImageEngine(BaseEngine):
             counter += np.sum(bitplane[:, i] ^ bitplane[:, i + 1])
 
         return counter / 112
+
+    @staticmethod
+    def _calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity_matrix):
+        for channel in range(block_index_size[2]):
+            for row in range(block_index_size[0]):
+                for col in range(block_index_size[1]):
+                    for plane in range(8):
+                        # Get bitplane
+                        top = row * 8
+                        left = col * 8
+
+                        bitplane = \
+                            cgc_bit_plane[top:top + 8, left:left + 8, channel, plane]
+
+                        complexity_matrix[row, col, channel, plane] = \
+                            ImageEngine._count_complexity(bitplane)
+
+    @staticmethod
+    def _normal_to_bitplane(image: np.ndarray) -> np.ndarray:
+        image_shape = image.shape
+        bit_plane_size = (image_shape[0], image_shape[1], image_shape[2], 1)
+        cgc_bit_plane = np.reshape(image, bit_plane_size)
+        return np.unpackbits(cgc_bit_plane, axis=3)
+
+    @staticmethod
+    def _bitplane_to_normal(bitplane: np.ndarray) -> np.ndarray:
+        bitplane_shape = bitplane.shape
+        image_shape = (bitplane_shape[0], bitplane_shape[1], bitplane_shape[2])
+        new_cgc_image = np.packbits(bitplane, axis=3)
+        return np.reshape(new_cgc_image, image_shape)
 
     @staticmethod
     def conceal(
@@ -144,28 +174,14 @@ class ImageEngine(BaseEngine):
                     image_flatten_view[position] = (image_flatten_view[position] & 254) | secret_bit
         else:
             complexity_threshold = config[3]
-            print(image_shape)
             cgc_image = ImageEngine._binary_to_gray(image)
             block_index_size = (image_shape[0] // 8, image_shape[1] // 8, image_shape[2], 8)
 
             complexity = np.zeros(block_index_size, dtype=np.float)
 
-            bit_plane_size = (image_shape[0], image_shape[1], image_shape[2], 1)
-            cgc_bit_plane = np.reshape(cgc_image, bit_plane_size)
-            cgc_bit_plane = np.unpackbits(cgc_bit_plane, axis=3)
+            cgc_bit_plane = ImageEngine._normal_to_bitplane(cgc_image)
 
-            for channel in range(block_index_size[2]):
-                for row in range(block_index_size[0]):
-                    for col in range(block_index_size[1]):
-                        for plane in range(8):
-                            # Get bitplane
-                            top_idx = row * 8
-                            left_idx = col * 8
-                            bitplane = cgc_bit_plane[top_idx:top_idx + 8,
-                                       left_idx:left_idx + 8, channel, plane]
-
-                            complexity[row, col, channel, plane] = ImageEngine._count_complexity(
-                                bitplane)
+            ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
 
             # Get max message
             max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
@@ -221,8 +237,7 @@ class ImageEngine(BaseEngine):
 
                 cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane] = data
 
-            new_cgc_image = np.packbits(cgc_bit_plane, axis=3)
-            new_cgc_image = np.reshape(new_cgc_image, image_shape)
+            new_cgc_image = ImageEngine._bitplane_to_normal(cgc_bit_plane)
             image = ImageEngine._gray_to_binary(new_cgc_image)
 
         imwrite(file_out_path + file_in_extension, image, file_in_extension)
@@ -267,7 +282,6 @@ class ImageEngine(BaseEngine):
                 sequence = RandomUtil.get_random_sequence(min_pos, image_shape, secret_file_len,
                                                           seed)
                 sequence.sort(key=lambda x: x[1])
-
             else:
                 sequence = [(idx + metadata_len, idx) for idx in range(secret_file_len)]
 
@@ -288,6 +302,13 @@ class ImageEngine(BaseEngine):
 
             return extract_file_path + '.' + secret_file_ext
         else:
+            # ekstrak metadata
+            # bagi stego jadi 8x8 pixel
+            # buat jadi bit plane bpc
+            # ubah ke cgc
+            # cari yang noise
+            # extract pake konjugate map
+
             raise RuntimeError('Not supported yet :(')
 
     @staticmethod
