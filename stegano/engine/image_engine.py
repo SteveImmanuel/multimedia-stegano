@@ -22,8 +22,8 @@ class ImageEngine(BaseEngine):
     def get_conceal_option() -> List[ConfigParam]:
         return [
             RadioParam('Method', {
-                CONCEAL_BPCS: 'BPCS',
-                CONCEAL_LSB: 'LSB'
+                CONCEAL_LSB: 'LSB',
+                CONCEAL_BPCS: 'BPCS'
             }),
             RadioParam('Order', {
                 CONCEAL_RANDOM: 'Random',
@@ -51,7 +51,13 @@ class ImageEngine(BaseEngine):
 
     @staticmethod
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
-        return 1
+        is_lsb = option[1] == CONCEAL_LSB
+        if is_lsb:
+            image = imread(file_path)
+            max_file_size = int(np.prod(image.shape))
+            metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+
+            return max_file_size - metadata_len
 
     @staticmethod
     def conceal(
