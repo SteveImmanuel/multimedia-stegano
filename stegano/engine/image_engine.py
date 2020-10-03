@@ -36,8 +36,8 @@ class ImageEngine(BaseEngine):
     def get_extract_option() -> List[ConfigParam]:
         return [
             RadioParam('Method', {
-                CONCEAL_BPCS: 'BPCS',
-                CONCEAL_LSB: 'LSB'
+                CONCEAL_LSB: 'LSB',
+                CONCEAL_BPCS: 'BPCS'
             }),
         ]
 
@@ -134,7 +134,8 @@ class ImageEngine(BaseEngine):
             extract_file_path: str,
             encryption_key: str,
             config: List[Union[str, float, bool]],
-    ) -> None:
+    ) -> str:
+        print(config)
         is_lsb = config[1] == CONCEAL_LSB
 
         image = imread(file_in_path)
@@ -142,7 +143,6 @@ class ImageEngine(BaseEngine):
 
         image_flatten_view = image.ravel()
 
-        output_handle = open(extract_file_path, 'wb')
         seed = RandomUtil.get_seed_from_string(encryption_key)
 
         if is_lsb:
@@ -153,6 +153,8 @@ class ImageEngine(BaseEngine):
             metadata_frame = list(image_flatten_view[:metadata_len] & 1)
             is_random = metadata_frame.pop() == 1
             secret_file_len, secret_file_ext = FileUtil.extract_metadata(metadata_frame)
+
+            output_handle = open(extract_file_path + '.' + secret_file_ext, 'wb')
 
             # Buat sequence
             if is_random:
@@ -179,6 +181,7 @@ class ImageEngine(BaseEngine):
 
             output_handle.close()
 
+            return extract_file_path + '.' + secret_file_ext
         else:
             raise RuntimeError('Not supported yet :(')
 
@@ -188,4 +191,4 @@ if __name__ == '__main__':
     # ImageEngine.extract('out.png', 'out_simple.txt', '')
 
     ImageEngine.conceal('tiger.bmp', 'simple.txt', 'out', 'a', [True, CONCEAL_LSB, CONCEAL_SEQ])
-    ImageEngine.extract('out', 'extracted.txt', 'a', [True, CONCEAL_LSB])
+    ImageEngine.extract('email-ta.png', 'extracted.txt', 'wbqpbm', [True, CONCEAL_LSB])
