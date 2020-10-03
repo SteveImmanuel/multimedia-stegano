@@ -16,8 +16,6 @@ FRAME_RANDOM = 'f_rand'
 FRAME_SEQ = 'f_seq'
 PIXEL_RANDOM = 'p_rand'
 PIXEL_SEQ = 'p_seq'
-ENCRYPT_ON = 'enc_on'
-ENCRYPT_OFF = 'enc_off'
 
 
 class VideoEngine(BaseEngine):
@@ -34,7 +32,7 @@ class VideoEngine(BaseEngine):
     @staticmethod
     def parse_config(config: List[str]) -> List[bool]:
         res = [False] * 3
-        res[0] = True if config[0] == ENCRYPT_ON else False
+        res[0] = True if config[0] else False
         res[1] = True if config[1] == FRAME_SEQ else False
         res[2] = True if config[2] == PIXEL_SEQ else False
         return res
@@ -100,10 +98,6 @@ class VideoEngine(BaseEngine):
     @staticmethod
     def get_conceal_option() -> List[ConfigParam]:
         return [
-            RadioParam('Encryption', {
-                ENCRYPT_ON: 'Enable',
-                ENCRYPT_OFF: 'Disable'
-            }),
             RadioParam('Frame Arrangement', {
                 FRAME_SEQ: 'Sequential',
                 FRAME_RANDOM: 'Random'
@@ -129,7 +123,7 @@ class VideoEngine(BaseEngine):
         shape = video_reader.getShape()
         max_cover_size = int(np.prod(shape))
         len_metadata = FileUtil.get_metadata_len(max_cover_size) + len(
-            VideoEngine.get_supported_extensions())  # 3 bit for 3 option
+            VideoEngine.get_conceal_option()) + 1  # 2 bit for 2 option + 1 for encryption
         return (max_cover_size - math.ceil(len_metadata / 8)) // 8
 
     @staticmethod
@@ -141,7 +135,7 @@ class VideoEngine(BaseEngine):
 
         video_reader = skvideo.io.FFmpegReader(file_in_path)
         video_writer = skvideo.io.FFmpegWriter(
-            file_out_path,
+            file_out_path + video_reader.extension,
             outputdict={
                 '-vcodec': 'libx264rgb',  # use the h.264 codec
                 '-crf': '0',
@@ -150,6 +144,7 @@ class VideoEngine(BaseEngine):
 
         video_shape = video_reader.getShape()
         max_cover_size = int(np.prod(video_shape))
+
         max_message_size = VideoEngine.get_max_message(file_in_path, config) * 8  # in bit
         message_len = os.path.getsize(message_file_path) * 8  # in bit
 
@@ -159,7 +154,7 @@ class VideoEngine(BaseEngine):
         metadata = FileUtil.gen_metadata(message_len, max_cover_size, ext)
 
         metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(
-            VideoEngine.get_conceal_option())  # 3 bit for 3 option
+            VideoEngine.get_conceal_option()) + 1 # 2 bit for 2 option + 1 for encryption
 
         min_pos = np.unravel_index(metadata_len, video_shape)
         seed = RandomUtil.get_seed_from_string(encryption_key)
@@ -215,6 +210,7 @@ class VideoEngine(BaseEngine):
                 current_video_frame += 1
 
         video_writer.close()  # close the writer
+        return file_out_path + video_reader.extension
 
     @staticmethod
     def extract(
@@ -238,7 +234,8 @@ class VideoEngine(BaseEngine):
         frame_count = video_capture.get(7)
         video_shape = tuple([int(frame_count)] + [i for i in frame_dim])
         max_cover_size = np.prod(frame_dim) * frame_count
-        metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(VideoEngine.get_conceal_option())
+
+        metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(VideoEngine.get_conceal_option()) + 1
         frame_header = bytearray(list(frame.ravel()[:metadata_len]))
 
         metadata = []
@@ -292,6 +289,6 @@ class VideoEngine(BaseEngine):
         temp_file_path = temp_file
         if is_encrypt:
             temp_file_path = VideoEngine.decrypt(temp_file, encryption_key)
-        FileUtil.move_file(temp_file_path, extract_file_path)
+        FileUtil.move_file(temp_file_path, extract_file_path + '.' + ext)
 
         return extract_file_path + '.' + ext
