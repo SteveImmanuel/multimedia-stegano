@@ -49,7 +49,7 @@ class DummyEngine(BaseEngine):
         with open(file_out_path, 'w') as file:
             file.write('Hello, this is test')
         print('Done concealment')
-        return secret_file_path + '.dummy', 10.0
+        return file_out_path + '.dummy', 10.0
 
     @staticmethod
     def extract(
