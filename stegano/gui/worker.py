@@ -15,7 +15,12 @@ class Worker(QRunnable):
 
     def run(self):
         try:
-            out_path, psnr = self.function()
+            output = self.function()
+            if type(output) == str:
+                out_path = output
+                psnr = 0.0
+            else:
+                out_path, psnr = output
             self.signal.success.emit(out_path, psnr)
         except Exception as e:
             print(e)
