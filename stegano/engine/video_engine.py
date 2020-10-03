@@ -38,22 +38,24 @@ class VideoEngine(BaseEngine):
         return res
 
     @staticmethod
-    def generate_sequence(config: List[Union[str, float]], min_pos: Tuple, video_shape: Tuple, message_len: int,
-                          seed: int) -> List[Tuple[Tuple, int]]:
+    def generate_sequence(config: List[Union[str, float]], min_pos: Tuple, video_shape: Tuple,
+                          message_len: int, seed: int) -> List[Tuple[Tuple, int]]:
         _, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
         random.seed(seed)
 
         if not is_frame_seq and not is_pixel_seq:
-            return RandomUtil.get_random_sequence(min_pos, video_shape, message_len, random.random())
+            return RandomUtil.get_random_sequence(min_pos, video_shape, message_len,
+                                                  random.random())
 
         if is_frame_seq and is_pixel_seq:
             min_idx = int(np.ravel_multi_index(min_pos, video_shape))
-            return [(np.unravel_index(i, video_shape), i - min_idx) for i in
-                    range(min_idx, min_idx + message_len)]
+            return [(np.unravel_index(i, video_shape), i - min_idx)
+                    for i in range(min_idx, min_idx + message_len)]
 
         frame_shape = video_shape[1:]
         max_bit_in_frame = int(np.prod(frame_shape))
-        frame_needed = math.ceil((message_len + np.ravel_multi_index(min_pos, video_shape) + 1) / max_bit_in_frame)
+        frame_needed = math.ceil(
+            (message_len + np.ravel_multi_index(min_pos, video_shape) + 1) / max_bit_in_frame)
 
         if is_frame_seq and not is_pixel_seq:
             temp_sequence = []
@@ -69,8 +71,8 @@ class VideoEngine(BaseEngine):
                     remainder_message_len = message_len - (frame_pos * max_bit_in_frame)
                     bit_len = min(bit_len, remainder_message_len)
 
-                pixel_random_sequence_in_frame = RandomUtil.get_random_sequence(min_pixel_pos, frame_shape,
-                                                                                bit_len, random.random())
+                pixel_random_sequence_in_frame = RandomUtil.get_random_sequence(
+                    min_pixel_pos, frame_shape, bit_len, random.random())
                 for location, idx in pixel_random_sequence_in_frame:
                     location = tuple([frame_pos] + [i for i in location])
                     temp_sequence.append((location, idx + (frame_pos * max_bit_in_frame)))
@@ -78,10 +80,11 @@ class VideoEngine(BaseEngine):
             return temp_sequence
 
         if not is_frame_seq and is_pixel_seq:
-            pixel_random_sequence_in_frame = RandomUtil.get_random_sequence((0,), video_shape[0],
-                                                                            frame_needed, random.random())
+            pixel_random_sequence_in_frame = RandomUtil.get_random_sequence((0, ), video_shape[0],
+                                                                            frame_needed,
+                                                                            random.random())
             temp_sequence = []
-            for idx, ((frame_pos,), padding) in enumerate(pixel_random_sequence_in_frame):
+            for idx, ((frame_pos, ), padding) in enumerate(pixel_random_sequence_in_frame):
                 if frame_pos == 0:
                     # first_frame
                     min_pixel_idx = np.ravel_multi_index(min_pos, video_shape)  # for metadata
@@ -91,7 +94,8 @@ class VideoEngine(BaseEngine):
                 remainder_message_len = message_len - (idx * max_bit_in_frame)
                 bit_len_in_frame = min(max_bit_in_frame, remainder_message_len)
                 for pixel_idx in range(min_pixel_idx, bit_len_in_frame):
-                    location = tuple([frame_pos] + [i for i in np.unravel_index(pixel_idx, frame_shape)])
+                    location = tuple([frame_pos] +
+                                     [i for i in np.unravel_index(pixel_idx, frame_shape)])
                     temp_sequence.append((location, padding + pixel_idx))
             return temp_sequence
 
@@ -105,7 +109,8 @@ class VideoEngine(BaseEngine):
             RadioParam('Pixel Arrangement', {
                 PIXEL_SEQ: 'Sequential',
                 PIXEL_RANDOM: 'Random'
-            })]
+            })
+        ]
 
     @staticmethod
     def get_supported_extensions() -> List[str]:
@@ -129,6 +134,12 @@ class VideoEngine(BaseEngine):
     @staticmethod
     def conceal(file_in_path: str, message_file_path: str, file_out_path: str, encryption_key: str,
                 config: List[Union[str, float]]) -> None:
+        def psnr(original, edited):
+            mse = np.mean((original - edited)**2)
+            if mse == 0:
+                return 100
+            return 20 * np.log10(255 / np.sqrt(mse))
+
         is_encrypt, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
         VideoEngine.check_key(encryption_key)
         _, ext = os.path.basename(message_file_path).split('.')
@@ -154,11 +165,12 @@ class VideoEngine(BaseEngine):
         metadata = FileUtil.gen_metadata(message_len, max_cover_size, ext)
 
         metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(
-            VideoEngine.get_conceal_option()) + 1 # 2 bit for 2 option + 1 for encryption
+            VideoEngine.get_conceal_option()) + 1  # 2 bit for 2 option + 1 for encryption
 
         min_pos = np.unravel_index(metadata_len, video_shape)
         seed = RandomUtil.get_seed_from_string(encryption_key)
-        pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len, seed)
+        pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len,
+                                                       seed)
 
         metadata.append(0)
         used_message_file_path = message_file_path
@@ -172,10 +184,11 @@ class VideoEngine(BaseEngine):
         current_video_frame = 0
         random_pixel_sequence_idx = 0
         pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
-
+        list_of_psnr = []
         with open(used_message_file_path, 'rb') as message_handle:
             for read_frame in video_reader.nextFrame():
                 frame = read_frame.copy()
+                original_frame = frame.copy()
 
                 if current_video_frame == 0:
                     #  first frame, insert meta data
@@ -185,14 +198,16 @@ class VideoEngine(BaseEngine):
                         it, idx = divmod(i, 3)
                         location = 3 * it + (2 - idx)
                         frame_byte = frame[np.unravel_index(location, video_shape)[1:]]
-                        frame[np.unravel_index(location, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
+                        frame[np.unravel_index(
+                            location, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
 
                 pixel_frame_location = pixel_location_in_video[0]
                 while pixel_frame_location == current_video_frame:
                     byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
                     message_handle.seek(byte_location_in_message)
                     message_byte = message_handle.read(1)  # read 1 byte
-                    message_bit = ord(message_byte) >> (7 - bit_location_in_byte) & 1  # 0 location is from left
+                    message_bit = ord(message_byte) >> (
+                        7 - bit_location_in_byte) & 1  # 0 location is from left
 
                     pixel_location_in_frame = VideoEngine.rgb_to_bgr(pixel_location_in_video[1:])
                     frame[pixel_location_in_frame] &= 254
@@ -203,21 +218,23 @@ class VideoEngine(BaseEngine):
                         # all bit in message have been embedded
                         break
 
-                    pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
+                    pixel_location_in_video, bit_idx_in_message = pixel_sequence[
+                        random_pixel_sequence_idx]
                     pixel_frame_location = pixel_location_in_video[0]
 
                 video_writer.writeFrame(frame)
                 current_video_frame += 1
+                list_of_psnr.append(psnr(original_frame, frame))
 
         video_writer.close()  # close the writer
-        return file_out_path + video_reader.extension
+        return file_out_path + video_reader.extension, np.mean(list_of_psnr)
 
     @staticmethod
     def extract(
-            file_in_path: str,
-            extract_file_path: str,
-            encryption_key: str,
-            config: List[Union[str, float, bool]],
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> str:
         VideoEngine.check_key(encryption_key)
 
@@ -235,7 +252,8 @@ class VideoEngine(BaseEngine):
         video_shape = tuple([int(frame_count)] + [i for i in frame_dim])
         max_cover_size = np.prod(frame_dim) * frame_count
 
-        metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(VideoEngine.get_conceal_option()) + 1
+        metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(
+            VideoEngine.get_conceal_option()) + 1
         frame_header = bytearray(list(frame.ravel()[:metadata_len]))
 
         metadata = []
@@ -255,24 +273,28 @@ class VideoEngine(BaseEngine):
         config[2] = PIXEL_SEQ if is_pixel_seq else PIXEL_RANDOM
 
         seed = RandomUtil.get_seed_from_string(encryption_key)
-        pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len, seed)
+        pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len,
+                                                       seed)
 
         pixel_sequence.sort(key=lambda val: val[1])
 
         temp_byte = 0
         assign_count = 0
-
         temp_file = FileUtil.get_temp_out_name()
+        last_frame = 0
         with open(temp_file, 'wb') as message_output_handler:
             for pixel_location_in_video, _ in pixel_sequence:
-                frame_pos = pixel_location_in_video[0]
-                video_capture.set(1, frame_pos)  # set next frame
-                ret_status, frame = video_capture.read()
 
-                if not ret_status:
-                    # error occur not reach end of pixel_sequence
-                    print('An error occur while extracting message')
-                    break
+                frame_pos = pixel_location_in_video[0]
+                if frame_pos != last_frame:
+                    last_frame = frame_pos
+                    video_capture.set(1, frame_pos)  # set next frame
+                    ret_status, frame = video_capture.read()
+
+                    if not ret_status:
+                        # error occur not reach end of pixel_sequence
+                        print('An error occur while extracting message')
+                        break
 
                 message_bit = frame[pixel_location_in_video[1:]] & 1
                 temp_byte <<= 1
