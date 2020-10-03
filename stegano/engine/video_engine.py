@@ -21,7 +21,7 @@ PIXEL_SEQ = 'p_seq'
 class VideoEngine(BaseEngine):
     @staticmethod
     def check_key(key: str):
-        assert 1 <= len(key) <= 25
+        assert 1 <= len(key) <= 25, 'Key length must be between 1 and 25'
 
     @staticmethod
     def rgb_to_bgr(location: Tuple) -> Tuple:
@@ -243,9 +243,9 @@ class VideoEngine(BaseEngine):
             raise OSError(f'Extension .{ext} not supported')
 
         video_capture = cv2.VideoCapture(file_in_path)
-        assert video_capture.isOpened()
+        assert video_capture.isOpened(), "Cannot open cover video"
         ret_status, frame = video_capture.read()  # get first frame
-        assert ret_status
+        assert ret_status, "Cannot open cover video"
 
         frame_dim = frame.shape
         frame_count = video_capture.get(7)
