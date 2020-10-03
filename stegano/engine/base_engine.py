@@ -18,7 +18,7 @@ class BaseEngine(ABC):
             file_out_path: str,
             encryption_key: str,
             config: List[Union[str, float, bool]],
-    ) -> None:
+    ) -> (str, float):
         pass
 
     @staticmethod

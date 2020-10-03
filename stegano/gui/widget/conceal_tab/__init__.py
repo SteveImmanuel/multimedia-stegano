@@ -147,9 +147,12 @@ class ConcealTab(QWidget):
         QThreadPool.globalInstance().start(worker)
         self._loading_dialog.exec()
 
-    def _on_conceal_success(self, out_path: str):
+    def _on_conceal_success(self, out_path: str, psnr: float):
         self._file_output_box.path_output.setText(out_path)
         self._loading_dialog.close()
+
+        message_box = MessageDialog('Success', 'PSNR {} dB'.format(psnr), self)
+        message_box.exec()
 
     def _on_conceal_error(self, msg: str):
         self._loading_dialog.close()
