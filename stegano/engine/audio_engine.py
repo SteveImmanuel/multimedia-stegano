@@ -4,7 +4,7 @@ import math
 
 from typing import List, Union
 
-from stegano.engine.base_engine import BaseEngine
+from stegano.engine import BaseEngine
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
 from stegano.gui.config_param import RadioParam, ConfigParam
@@ -27,7 +27,7 @@ class AudioEngine(BaseEngine):
         config: List[str],
     ) -> None:
         is_encrypt, is_random = AudioEngine.parse_config(config)
-        _, ext = os.path.basename(file_in_path).split('.')
+        _, ext = os.path.basename(message_file_path).split('.')
 
         if is_encrypt:
             real_message_path = AudioEngine.encrypt(message_file_path, encryption_key)
@@ -98,7 +98,7 @@ class AudioEngine(BaseEngine):
     @staticmethod
     def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> str:
 
-        filename, ext = os.path.basename(file_in_path).split('.')
+        filename, _ = os.path.basename(file_in_path).split('.')
 
         stego_obj = wave.open(file_in_path, 'rb')
         max_file_size = stego_obj.getnframes() * 4
@@ -200,3 +200,13 @@ class AudioEngine(BaseEngine):
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         cover_obj = wave.open(file_path, 'rb')
         return cover_obj.getnframes() * 4 // 8
+
+
+if __name__ == "__main__":
+    audio_engine = AudioEngine()
+    base_path = '/home/steve/Git/multimedia-stegano/'
+    audio_engine.conceal(f'{base_path}/new.wav', f'{base_path}/a.txt',
+                         f'{base_path}/testbuffer.wav', 'test123', [False, CONCEAL_RANDOM])
+    audio_engine.extract(f'{base_path}/testbuffer.wav', 'dec.txt', 'test123')
+    psnr = audio_engine.count_psnr(f'{base_path}/testbuffer.wav', f'{base_path}/new.wav')
+    print(psnr)
