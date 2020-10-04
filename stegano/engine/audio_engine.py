@@ -200,7 +200,7 @@ class AudioEngine(BaseEngine):
         return res
 
     @staticmethod
-    def get_supported_extensions(self) -> List[str]:
+    def get_supported_extensions() -> List[str]:
         return ['wav']
 
     @staticmethod
