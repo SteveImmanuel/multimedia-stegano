@@ -14,7 +14,7 @@ class FileUtil:
         secret_len_bitsize = math.ceil(math.log(max_len, 2))
         metadata += bin(secret_len).lstrip('0b').rjust(secret_len_bitsize, '0')
 
-        if len(ext) == 3:
+        for _ in range(4 - len(ext)):
             metadata += '00000000'
 
         for char in ext:
