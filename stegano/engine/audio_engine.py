@@ -1,6 +1,7 @@
 import os
 import wave
 import math
+import subprocess
 
 from typing import List, Union
 
@@ -28,6 +29,8 @@ class AudioEngine(BaseEngine):
     ) -> (str, float):
         is_encrypt, is_random = AudioEngine.parse_config(config)
         _, ext = os.path.basename(message_file_path).split('.')
+        file_in_ext = os.path.splitext(file_in_path)[-1].lower()
+        full_out_path = file_out_path + file_in_ext
 
         if is_encrypt:
             real_message_path = AudioEngine.encrypt(message_file_path, encryption_key)
@@ -57,7 +60,7 @@ class AudioEngine(BaseEngine):
         frame_size = min(FRAME_SIZE, cover_obj.getnframes())  # 1 frame = 4 bytes
         frame_bytes = bytearray(list(cover_obj.readframes(frame_size)))
 
-        with wave.open(file_out_path, 'wb') as stego:
+        with wave.open(full_out_path, 'wb') as stego:
             stego.setparams(cover_obj.getparams())
 
             with open(real_message_path, 'rb') as secret:
@@ -95,11 +98,16 @@ class AudioEngine(BaseEngine):
                 stego.writeframes(frame_bytes)
         cover_obj.close()
 
-        psnr = AudioEngine.count_psnr(file_out_path, file_in_path)
-        return (f'{file_out_path}.{ext}', psnr)
+        psnr = AudioEngine.count_psnr(full_out_path, file_in_path)
+        return (full_out_path, psnr)
 
     @staticmethod
-    def extract(file_in_path: str, extract_file_path: str, encryption_key: str) -> str:
+    def extract(
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
+    ) -> str:
 
         filename, _ = os.path.basename(file_in_path).split('.')
 
@@ -159,7 +167,7 @@ class AudioEngine(BaseEngine):
 
         cur_max = 0
         total_len = 0
-        mse = 0
+        mse = 0.0
         frame_size = min(FRAME_SIZE, original.getnframes())
         while (original.tell() < original.getnframes()):
             stego_frames = list(stego.readframes(frame_size))
@@ -169,6 +177,7 @@ class AudioEngine(BaseEngine):
             cur_max = max(cur_max, max(stego_frames))
             for i in range(len(original_frames)):
                 mse += (stego_frames[i] - original_frames[i])**2
+        mse /= total_len
 
         return 20 * math.log(cur_max, 10) - 10 * math.log(mse, 10)
 
@@ -203,6 +212,10 @@ class AudioEngine(BaseEngine):
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         cover_obj = wave.open(file_path, 'rb')
         return cover_obj.getnframes() * 4 // 8
+
+    @staticmethod
+    def convert_to_wav(file_in_path: str, file_out_path: str) -> None:
+        subprocess.call(['ffmpeg', '-loglevel', 'quiet', '-i', file_in_path, file_out_path])
 
 
 if __name__ == "__main__":
