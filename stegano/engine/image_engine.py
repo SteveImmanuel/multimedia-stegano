@@ -103,9 +103,11 @@ class ImageEngine(BaseEngine):
     def _count_complexity(bitplane) -> float:
         counter = 0
 
-        for i in range(7):
-            counter += np.sum(bitplane[i] ^ bitplane[i + 1])
-            counter += np.sum(bitplane[:, i] ^ bitplane[:, i + 1])
+        column_result = bitplane[:, 1:] ^ bitplane[:, :7]
+        row_result= bitplane[1:,:]^bitplane[:7,:]
+
+        counter += np.count_nonzero(column_result)
+        counter += np.count_nonzero(row_result)
 
         return counter / 112
 
