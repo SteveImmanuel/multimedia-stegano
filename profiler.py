@@ -15,7 +15,9 @@ message_size = ['small', 'big']
 message_paths = [f'{mtype}_{msize}.{mtype}' for mtype in message_type for msize in message_size]
 
 COVER_DIR = 'test_data/cover'
-cover_type = ['audio']  #TODO: add image and video cover name, same as in the test_data/cover
+cover_type = ['image_png', 'image_bmp']
+# cover_type = ['audio']
+# cover_type = ['video']
 cover_ext = {'audio': 'wav', 'video': 'avi', 'image_png': 'png', 'image_bmp': 'bmp'}
 cover_paths = [f'{ctype}.{cover_ext[ctype]}' for ctype in cover_type]
 
@@ -23,6 +25,9 @@ if os.path.exists('test_result'):
     shutil.rmtree('test_result')
 os.makedirs('test_result/concealed')
 os.makedirs('test_result/extracted')
+
+# engine_conceal_param = [True, CONCEAL_RANDOM]
+# engine_extract_param = [True]
 
 engine_conceal_param = [True, CONCEAL_LSB, CONCEAL_RANDOM]
 engine_extract_param = [True, CONCEAL_LSB]
