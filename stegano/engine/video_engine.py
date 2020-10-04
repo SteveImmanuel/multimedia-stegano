@@ -132,6 +132,8 @@ class VideoEngine(BaseEngine):
                 config: List[Union[str, float]]) -> (str, float):
         def psnr(original, edited):
             mse = np.mean((original - edited)**2)
+            if mse == 0:
+                return 100 # default value
             return 20 * np.log10(255 / np.sqrt(mse))
 
         is_encrypt, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
