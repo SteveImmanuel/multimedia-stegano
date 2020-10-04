@@ -155,9 +155,10 @@ class AudioEngine(BaseEngine):
             out_path = AudioEngine.decrypt(temp_file, encryption_key)
         else:
             out_path = temp_file
-        FileUtil.move_file(out_path, extract_file_path)
+        full_extract_path = f'{extract_file_path}.{ext}'
+        FileUtil.move_file(out_path, full_extract_path)
 
-        return f'extracted_{filename}.{ext}'
+        return full_extract_path
 
     @staticmethod
     def count_psnr(stego_filepath: str, original_filepath: str) -> float:
