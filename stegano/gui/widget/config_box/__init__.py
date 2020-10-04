@@ -55,7 +55,7 @@ class ConfigBox(QGroupBox):
 
         # Encryption password
         self._encrypt_password = QLineEdit()
-        self._encrypt_password.setMaxLength(20)
+        self._encrypt_password.setMaxLength(25)
         self._encrypt_password.setText(StringUtil.generate_random_string(6))
 
         # Engine options
