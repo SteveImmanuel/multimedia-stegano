@@ -38,29 +38,29 @@ class DummyEngine(BaseEngine):
 
     @staticmethod
     def conceal(
-            file_in_path: str,
-            secret_file_path: str,
-            file_out_path: str,
-            encryption_key: str,
-            config: List[Union[str, float, bool]],
+        file_in_path: str,
+        secret_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> (str, float):
         print('Doing concealment with param {}'.format(config))
         time.sleep(10)
-        with open(file_out_path, 'w') as file:
+        with open(file_out_path + '.dummy', 'w') as file:
             file.write('Hello, this is test')
         print('Done concealment')
         return file_out_path + '.dummy', 10.0
 
     @staticmethod
     def extract(
-            file_in_path: str,
-            extract_file_path: str,
-            encryption_key: str,
-            config: List[Union[str, float, bool]],
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> str:
         print('Doing extract with param {} {}'.format(encryption_key, config))
         time.sleep(5)
-        with open(extract_file_path, 'w') as file:
+        with open(extract_file_path + '.result', 'w') as file:
             file.write('Hello, this is extracted test')
         print('Done extracting')
         return extract_file_path + '.result'
