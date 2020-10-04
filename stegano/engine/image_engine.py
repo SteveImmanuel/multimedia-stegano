@@ -1,5 +1,6 @@
 import math
 import os
+import time
 from typing import List, Union
 
 import numpy as np
@@ -61,12 +62,35 @@ class ImageEngine(BaseEngine):
 
             return (max_file_size - metadata_len) // 8
         else:
-            max_message_size = int(np.prod(image.shape)) * 8  # Dalam bit
-            metadata_conjugate_list_len = math.ceil(max_message_size / 64)
-            metadata_len = FileUtil.get_metadata_len(max_message_size)
-            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+            image_shape = image.shape
+            complexity_threshold = option[3]
+            cgc_image = ImageEngine._binary_to_gray(image)
+            block_index_size = (image_shape[0] // 8, image_shape[1] // 8, image_shape[2], 8)
 
-            return (max_message_size - metadata_len) // 8
+            complexity = np.zeros(block_index_size, dtype=np.float)
+
+            cgc_bit_plane = ImageEngine._normal_to_bitplane(cgc_image)
+
+            ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
+
+            # Get max message
+            max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
+            metadata_len, _ = ImageEngine._count_metadata_len(max_message_size)
+
+            noise_index = np.where(complexity > complexity_threshold)
+            block_usable = np.count_nonzero(noise_index)
+
+            metadata_block_len = math.ceil(metadata_len / 63)
+
+            return (block_usable - metadata_block_len) * 8
+
+    @staticmethod
+    def _count_metadata_len(max_message_size_bit: int) -> (int, int):
+        metadata_conjugate_list_len = math.ceil(max_message_size_bit / 64)
+        metadata_len = FileUtil.get_metadata_len(max_message_size_bit)
+        metadata_core_len = metadata_len
+        metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+        return metadata_len, metadata_core_len
 
     @staticmethod
     def _binary_to_gray(x: Union[int, np.ndarray]) -> Union[int, np.ndarray]:
@@ -215,9 +239,7 @@ class ImageEngine(BaseEngine):
 
             # Get max message
             max_message_size = int(np.prod(image.shape)) * 8  # Dalam bit
-            metadata_conjugate_list_len = math.ceil(max_message_size / 64)
-            metadata_len = FileUtil.get_metadata_len(max_message_size)
-            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+            metadata_len, _ = ImageEngine._count_metadata_len(max_message_size)
 
             metadata = \
                 FileUtil.gen_metadata(secret_file_len, max_message_size, secret_file_extension)
@@ -257,7 +279,6 @@ class ImageEngine(BaseEngine):
                 data = metadata_arr[:63]
                 metadata_arr = metadata_arr[63:]
 
-                print(row, col, channel, plane, data)
                 data = np.pad(data, (0, 64 - len(data)))
                 data = np.reshape(data, (8, 8))
 
@@ -350,10 +371,7 @@ class ImageEngine(BaseEngine):
             ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
 
             max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
-            metadata_conjugate_list_len = math.ceil(max_message_size / 64)
-            metadata_len = FileUtil.get_metadata_len(max_message_size)
-            metadata_core_len = metadata_len
-            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+            metadata_len, metadata_core_len = ImageEngine._count_metadata_len(max_message_size)
 
             noise_index = np.where(complexity > complexity_threshold)
             noise_index_arr = np.array(noise_index)
@@ -373,9 +391,6 @@ class ImageEngine(BaseEngine):
                 if (bitplane.ravel()[-1] == 1):
                     bitplane = ImageEngine._conjugate(bitplane)
 
-                print(row, col, channel, plane, bitplane)
-                print()
-
                 metadata.append(bitplane.ravel()[:63])
 
             metadata = np.concatenate(metadata).ravel()
@@ -383,9 +398,7 @@ class ImageEngine(BaseEngine):
             core_metadata = metadata[:metadata_core_len]
             conjugate_map = metadata[metadata_core_len + 2:]
 
-            print(core_metadata)
             message_size, message_extension = FileUtil.extract_metadata(list(core_metadata))
-            print(message_size, message_extension)
 
             extract_file_path = extract_file_path + '.' + message_extension
 
