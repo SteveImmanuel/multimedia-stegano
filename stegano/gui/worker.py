@@ -1,3 +1,5 @@
+import traceback
+
 from PyQt5.QtCore import QRunnable, pyqtSignal, QObject
 
 
@@ -24,4 +26,5 @@ class Worker(QRunnable):
             self.signal.success.emit(out_path, psnr)
         except Exception as e:
             print(e)
+            traceback.print_exc()
             self.signal.error.emit(str(e))
