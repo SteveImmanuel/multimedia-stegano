@@ -161,9 +161,12 @@ class ImageEngine(BaseEngine):
         secret_file_extension = os.path.splitext(secret_file_path)[-1][1:].lower()
         secret_file_len = os.path.getsize(secret_file_path) * 8  # in bit
 
-        secret_file_handle = open(secret_file_path, 'rb')
-
         seed = RandomUtil.get_seed_from_string(encryption_key)
+
+        if is_encrypted:
+            secret_file_path = ImageEngine.encrypt(secret_file_path, encryption_key)
+
+        secret_file_handle = open(secret_file_path, 'rb')
 
         if is_lsb:
             max_file_size = int(np.prod(image_shape))
@@ -369,7 +372,9 @@ class ImageEngine(BaseEngine):
 
             message_size, message_extension = FileUtil.extract_metadata(list(core_metadata))
 
-            output_handle = open(extract_file_path + '.' + message_extension, 'wb')
+            extract_file_path = extract_file_path + '.' + message_extension
+
+            output_handle = open(extract_file_path, 'wb')
 
             is_random = metadata[metadata_core_len]
             is_encrypted = metadata[metadata_core_len + 1]
@@ -403,6 +408,15 @@ class ImageEngine(BaseEngine):
                     break
 
             output_handle.close()
+
+            if is_encrypted:
+                out_path = ImageEngine.decrypt(extract_file_path, encryption_key)
+            else:
+                out_path = extract_file_path
+
+            FileUtil.move_file(out_path, extract_file_path)
+
+            return extract_file_path
 
 
 if __name__ == '__main__':
