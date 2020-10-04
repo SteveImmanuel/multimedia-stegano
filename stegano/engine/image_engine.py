@@ -1,10 +1,8 @@
+import math
 import os
 from typing import List, Union
 
 import numpy as np
-import math
-from PIL import Image
-from bitstring import BitArray
 from imageio import imread, imwrite
 
 from stegano.engine import BaseEngine
@@ -41,6 +39,7 @@ class ImageEngine(BaseEngine):
                 CONCEAL_LSB: 'LSB',
                 CONCEAL_BPCS: 'BPCS'
             }),
+            FloatParam('Threshold for BPCS', 0.1, 0.3)
         ]
 
     @staticmethod
@@ -54,12 +53,20 @@ class ImageEngine(BaseEngine):
     @staticmethod
     def get_max_message(file_path: str, option: List[Union[str, float]]) -> int:
         is_lsb = option[1] == CONCEAL_LSB
+        image = imread(file_path)
+
         if is_lsb:
-            image = imread(file_path)
             max_file_size = int(np.prod(image.shape))
             metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
 
             return (max_file_size - metadata_len) // 8
+        else:
+            max_message_size = int(np.prod(image.shape)) * 8  # Dalam bit
+            metadata_conjugate_list_len = math.ceil(max_message_size / 64)
+            metadata_len = FileUtil.get_metadata_len(max_message_size)
+            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+
+            return (max_message_size - metadata_len) // 8
 
     @staticmethod
     def _binary_to_gray(x: Union[int, np.ndarray]) -> Union[int, np.ndarray]:
@@ -115,6 +122,23 @@ class ImageEngine(BaseEngine):
         return np.reshape(new_cgc_image, image_shape)
 
     @staticmethod
+    def _conjugate(bitplane):
+        checker_board = np.array([[1, 0] * 4, [0, 1] * 4] * 4)
+        return np.logical_xor(bitplane, checker_board).astype(int)
+
+    @staticmethod
+    def _load_secret_message(secret_message_path):
+        secret_segments = np.array([], dtype=int)
+        with open(secret_message_path, 'rb') as f:
+            bytes = f.read()
+            for byte in bytes:
+                bin_string = bin(byte).lstrip('0b').rjust(8, '0')
+                segment = np.array(list(map(int, bin_string)))
+                secret_segments = np.append(secret_segments, segment)
+        secret_segments = np.pad(secret_segments, (0, 64 - len(secret_segments) % 64))
+        return np.reshape(secret_segments, (-1, 8, 8))
+
+    @staticmethod
     def conceal(
             file_in_path: str,
             secret_file_path: str,
@@ -122,6 +146,7 @@ class ImageEngine(BaseEngine):
             encryption_key: str,
             config: List[Union[str, bool, float]],
     ) -> (str, float):
+        is_encrypted = config[0]
         is_lsb = config[1] == CONCEAL_LSB
         is_random = config[2] == CONCEAL_RANDOM
 
@@ -184,30 +209,22 @@ class ImageEngine(BaseEngine):
             ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
 
             # Get max message
-            max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
+            max_message_size = int(np.prod(image.shape)) * 8  # Dalam bit
             metadata_conjugate_list_len = math.ceil(max_message_size / 64)
             metadata_len = FileUtil.get_metadata_len(max_message_size)
-            metadata_len += 2 + 32 + metadata_conjugate_list_len  # 2 binary option + 1 float
+            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
 
             max_file_size = max_message_size - metadata_len
 
-            print(max_file_size)
-            print(metadata_len)
-
             metadata = FileUtil.gen_metadata(secret_file_len, max_file_size, secret_file_extension)
-
             metadata.append(is_random)
-            metadata.append(0)  # TODO is_encrypted
-
-            complexity_threshold_bit = BitArray(float=complexity_threshold, length=32)
-            for threshold_bit in complexity_threshold_bit:
-                metadata.append(1 if threshold_bit else 0)
+            metadata.append(is_encrypted)  # TODO is_encrypted
 
             noise_index = np.where(complexity > complexity_threshold)
             noise_index_arr = np.array(noise_index)
             noise_index_arr = np.transpose(noise_index_arr)
 
-            metadata_block_len = math.ceil(metadata_len / 64)
+            metadata_block_len = math.ceil(metadata_len / 63)
             metadata_block_index_arr = noise_index_arr[:metadata_block_len]
             noise_index_arr = noise_index_arr[metadata_block_len:]
 
@@ -230,8 +247,16 @@ class ImageEngine(BaseEngine):
 
                 cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane] = data
 
-            metadata = np.pad(metadata, (0, 64 - len(metadata) % 64)).reshape((-1, 8, 8))
-            for (row, col, channel, plane), data in zip(metadata_block_index_arr, metadata):
+            metadata_arr = np.array(metadata)
+            metadata_list = np.array_split(metadata_arr, math.ceil(len(metadata_arr) / 63))
+            for (row, col, channel, plane), data in zip(metadata_block_index_arr, metadata_list):
+                data = np.pad(data, (0, 64 - len(data)))
+                data = np.reshape(data, (8, 8))
+
+                complexity = ImageEngine._count_complexity(data)
+                if complexity <= complexity_threshold:
+                    data = ImageEngine._conjugate(data)
+
                 top_idx = row * 8
                 left_idx = col * 8
 
@@ -255,7 +280,6 @@ class ImageEngine(BaseEngine):
             encryption_key: str,
             config: List[Union[str, float, bool]],
     ) -> str:
-        print(config)
         is_lsb = config[1] == CONCEAL_LSB
 
         image = imread(file_in_path)
@@ -302,31 +326,83 @@ class ImageEngine(BaseEngine):
 
             return extract_file_path + '.' + secret_file_ext
         else:
-            # ekstrak metadata
-            # bagi stego jadi 8x8 pixel
-            # buat jadi bit plane bpc
-            # ubah ke cgc
-            # cari yang noise
-            # extract pake konjugate map
+            complexity_threshold = config[2]
 
-            raise RuntimeError('Not supported yet :(')
+            cgc_image = ImageEngine._binary_to_gray(image)
+            block_index_size = (image_shape[0] // 8, image_shape[1] // 8, image_shape[2], 8)
 
-    @staticmethod
-    def _conjugate(bitplane):
-        checker_board = np.array([[1, 0] * 4, [0, 1] * 4] * 4)
-        return np.logical_xor(bitplane, checker_board).astype(int)
+            complexity = np.zeros(block_index_size, dtype=np.float)
 
-    @staticmethod
-    def _load_secret_message(secret_message_path):
-        secret_segments = np.array([], dtype=int)
-        with open(secret_message_path, 'rb') as f:
-            bytes = f.read()
-            for byte in bytes:
-                bin_string = bin(byte).lstrip('0b').rjust(8, '0')
-                segment = np.array(list(map(int, bin_string)))
-                secret_segments = np.append(secret_segments, segment)
-        secret_segments = np.pad(secret_segments, (0, 64 - len(secret_segments) % 64))
-        return np.reshape(secret_segments, (-1, 8, 8))
+            cgc_bit_plane = ImageEngine._normal_to_bitplane(cgc_image)
+
+            ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
+
+            max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
+            metadata_conjugate_list_len = math.ceil(max_message_size / 64)
+            metadata_len = FileUtil.get_metadata_len(max_message_size)
+            metadata_core_len = metadata_len
+            metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
+
+            noise_index = np.where(complexity > complexity_threshold)
+            noise_index_arr = np.array(noise_index)
+            noise_index_arr = np.transpose(noise_index_arr)
+
+            metadata_block_len = math.ceil(metadata_len / 63)
+            metadata_block_index_arr = noise_index_arr[:metadata_block_len]
+            noise_index_arr = noise_index_arr[metadata_block_len:]
+
+            metadata = np.array([], dtype=np.uint8)
+            for row, col, channel, plane in metadata_block_index_arr:
+                top_idx = row * 8
+                left_idx = col * 8
+
+                bitplane = cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane]
+
+                if (bitplane.ravel()[-1] == 1):
+                    bitplane = ImageEngine._conjugate(bitplane)
+
+                metadata = np.append(metadata, (bitplane.ravel()[:63]))
+
+            metadata = metadata[:metadata_len]
+            core_metadata = metadata[:metadata_core_len]
+            conjugate_map = metadata[metadata_core_len + 2:]
+
+            message_size, message_extension = FileUtil.extract_metadata(list(core_metadata))
+
+            output_handle = open(extract_file_path + '.' + message_extension, 'wb')
+
+            is_random = metadata[metadata_core_len]
+            is_encrypted = metadata[metadata_core_len + 1]
+
+            if is_random:
+                np.random.seed(seed)
+                noise_index_arr = np.random.permutation(noise_index_arr)
+
+            read_size = 0
+
+            for block_idx, (row, col, channel, plane) in enumerate(noise_index_arr):
+                top_idx = row * 8
+                left_idx = col * 8
+
+                bitplane = cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane]
+
+                is_conjugated = conjugate_map[block_idx]
+
+                if is_conjugated:
+                    bitplane = ImageEngine._conjugate(bitplane)
+
+                data_left = message_size - read_size
+                useful_data = bitplane.ravel()[:min(data_left, 64)]
+                useful_data = np.reshape(useful_data, (-1, 8))
+                useful_data = np.packbits(useful_data)
+
+                output_handle.write(useful_data)
+
+                read_size += 64
+                if read_size > message_size:
+                    break
+
+            output_handle.close()
 
 
 if __name__ == '__main__':
@@ -335,4 +411,4 @@ if __name__ == '__main__':
 
     ImageEngine.conceal('kecil.png', 'simple.txt', 'out', 'a',
                         [True, CONCEAL_BPCS, CONCEAL_RANDOM, 0.3])
-    # ImageEngine.extract('email-ta.png', 'extracted.txt', 'wbqpbm', [True, CONCEAL_LSB])
+    ImageEngine.extract('out.png', 'extracted', 'a', [True, CONCEAL_BPCS, 0.3])
