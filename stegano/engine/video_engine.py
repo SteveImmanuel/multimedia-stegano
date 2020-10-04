@@ -203,7 +203,7 @@ class VideoEngine(BaseEngine):
                     message_handle.seek(byte_location_in_message)
                     message_byte = message_handle.read(1)  # read 1 byte
                     message_bit = ord(message_byte) >> (
-                        7 - bit_location_in_byte) & 1  # 0 location is from left
+                            7 - bit_location_in_byte) & 1  # 0 location is from left
 
                     pixel_location_in_frame = VideoEngine.rgb_to_bgr(pixel_location_in_video[1:])
                     frame[pixel_location_in_frame] &= 254
@@ -222,15 +222,16 @@ class VideoEngine(BaseEngine):
                 current_video_frame += 1
                 list_of_psnr.append(psnr(original_frame, frame))
 
+        video_reader.close() # close reader
         video_writer.close()  # close the writer
         return file_out_path + video_reader.extension, np.mean(list_of_psnr)
 
     @staticmethod
     def extract(
-        file_in_path: str,
-        extract_file_path: str,
-        encryption_key: str,
-        config: List[Union[str, float, bool]],
+            file_in_path: str,
+            extract_file_path: str,
+            encryption_key: str,
+            config: List[Union[str, float, bool]],
     ) -> str:
         VideoEngine.check_key(encryption_key)
 
@@ -238,15 +239,14 @@ class VideoEngine(BaseEngine):
         if ext.lower() not in VideoEngine.get_supported_extensions():
             raise OSError(f'Extension .{ext} not supported')
 
-        video_capture = cv2.VideoCapture(file_in_path)
+        video_capture = cv2.VideoCapture(file_in_path)  # getting first frame for metadata
+        video_reader = skvideo.io.FFmpegReader(file_in_path)
         assert video_capture.isOpened(), "Cannot open cover video"
         ret_status, frame = video_capture.read()  # get first frame
         assert ret_status, "Cannot open cover video"
 
-        frame_dim = frame.shape
-        frame_count = video_capture.get(7)
-        video_shape = tuple([int(frame_count)] + [i for i in frame_dim])
-        max_cover_size = np.prod(frame_dim) * frame_count
+        video_shape = video_reader.getShape()
+        max_cover_size = int(np.prod(video_shape))
 
         metadata_len = FileUtil.get_metadata_len(max_cover_size) + len(
             VideoEngine.get_conceal_option()) + 1
@@ -272,36 +272,45 @@ class VideoEngine(BaseEngine):
         pixel_sequence = VideoEngine.generate_sequence(config, min_pos, video_shape, message_len,
                                                        seed)
 
-        pixel_sequence.sort(key=lambda val: val[1])
-
-        temp_byte = 0
-        assign_count = 0
         temp_file = FileUtil.get_temp_out_name()
-        last_frame = 0
-        with open(temp_file, 'wb') as message_output_handler:
-            for pixel_location_in_video, _ in pixel_sequence:
 
-                frame_pos = pixel_location_in_video[0]
-                if frame_pos != last_frame:
-                    last_frame = frame_pos
-                    video_capture.set(1, frame_pos)  # set next frame
-                    ret_status, frame = video_capture.read()
+        current_video_frame = 0
+        random_pixel_sequence_idx = 0
+        pixel_location_in_video, bit_idx_in_message = pixel_sequence[random_pixel_sequence_idx]
+        with open(temp_file, 'wb+') as message_output_handler:
+            message_output_handler.write(bytes([0] * (message_len // 8)))
+            for read_frame in video_reader.nextFrame():
+                frame = read_frame.copy()
 
-                    if not ret_status:
-                        # error occur not reach end of pixel_sequence
-                        print('An error occur while extracting message')
+                pixel_frame_location = pixel_location_in_video[0]
+                while pixel_frame_location == current_video_frame:
+                    byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
+
+                    pixel_location_in_frame = VideoEngine.rgb_to_bgr(pixel_location_in_video[1:])
+                    message_bit = frame[pixel_location_in_frame] & 1
+
+                    message_output_handler.seek(byte_location_in_message)
+                    message_byte = message_output_handler.read(1)  # read 1 byte
+                    temp_byte = bytes([message_bit << (7 - bit_location_in_byte)])
+                    message_output_handler.seek(byte_location_in_message)
+                    message_output_handler.write(bytes([message_byte[0] | temp_byte[0]]))
+
+                    random_pixel_sequence_idx += 1
+                    if random_pixel_sequence_idx >= len(pixel_sequence):
+                        # all bit in message have been embedded
                         break
 
-                message_bit = frame[pixel_location_in_video[1:]] & 1
-                temp_byte <<= 1
-                temp_byte |= message_bit
-                assign_count += 1
+                    pixel_location_in_video, bit_idx_in_message = pixel_sequence[
+                        random_pixel_sequence_idx]
+                    pixel_frame_location = pixel_location_in_video[0]
 
-                if assign_count == 8:
-                    message_output_handler.write(bytes([temp_byte]))
-                    temp_byte = 0
-                    assign_count = 0
+                current_video_frame += 1
 
+                if random_pixel_sequence_idx >= len(pixel_sequence):
+                    # all bit in message have been embedded
+                    break
+
+        video_reader.close()
         video_capture.release()
 
         temp_file_path = temp_file
