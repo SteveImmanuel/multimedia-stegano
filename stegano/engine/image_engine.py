@@ -75,7 +75,7 @@ class ImageEngine(BaseEngine):
 
             # Get max message
             max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
-            metadata_len, _ = ImageEngine._count_metadata_len(max_message_size)
+            metadata_len, _ = ImageEngine._count_metadata_len_bpcs(max_message_size)
 
             noise_index = np.where(complexity > complexity_threshold)
             block_usable = np.count_nonzero(noise_index)
@@ -85,7 +85,7 @@ class ImageEngine(BaseEngine):
             return (block_usable - metadata_block_len) * 8
 
     @staticmethod
-    def _count_metadata_len(max_message_size_bit: int) -> (int, int):
+    def _count_metadata_len_bpcs(max_message_size_bit: int) -> (int, int):
         metadata_conjugate_list_len = math.ceil(max_message_size_bit / 64)
         metadata_len = FileUtil.get_metadata_len(max_message_size_bit)
         metadata_core_len = metadata_len
@@ -239,7 +239,7 @@ class ImageEngine(BaseEngine):
 
             # Get max message
             max_message_size = int(np.prod(image.shape)) * 8  # Dalam bit
-            metadata_len, _ = ImageEngine._count_metadata_len(max_message_size)
+            metadata_len, _ = ImageEngine._count_metadata_len_bpcs(max_message_size)
 
             metadata = \
                 FileUtil.gen_metadata(secret_file_len, max_message_size, secret_file_extension)
@@ -371,7 +371,7 @@ class ImageEngine(BaseEngine):
             ImageEngine._calculate_complexity_matrix(block_index_size, cgc_bit_plane, complexity)
 
             max_message_size = int(np.prod(image_shape)) * 8  # Dalam bit
-            metadata_len, metadata_core_len = ImageEngine._count_metadata_len(max_message_size)
+            metadata_len, metadata_core_len = ImageEngine._count_metadata_len_bpcs(max_message_size)
 
             noise_index = np.where(complexity > complexity_threshold)
             noise_index_arr = np.array(noise_index)
