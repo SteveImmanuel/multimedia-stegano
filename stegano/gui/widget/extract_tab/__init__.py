@@ -31,6 +31,8 @@ class ExtractTab(QWidget):
         self._config_box = ConfigBox()
         self._status_label = QLabel()
 
+        self._config_box.disable_encrypt_option()
+
         self._do_btn = QPushButton()
         self._do_btn.setText('Extract')
 

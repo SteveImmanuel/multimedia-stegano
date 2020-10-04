@@ -67,6 +67,13 @@ class ConfigBox(QGroupBox):
 
         self.setLayout(self._main_layout)
 
+    def disable_encrypt_option(self):
+        self._encrypt_option_layout.removeWidget(self._encrypt_option)
+        self._encrypt_option_layout.removeWidget(self._no_encrypt_option)
+        label = QLabel()
+        label.setText('Will be determined by file metadata')
+        self._encrypt_option_layout.addWidget(label)
+
     def set_engine_option(self, engine_option: List[ConfigParam]):
         row_count = self._main_layout.rowCount()
 
