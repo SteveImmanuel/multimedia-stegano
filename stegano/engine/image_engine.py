@@ -104,7 +104,7 @@ class ImageEngine(BaseEngine):
         counter = 0
 
         column_result = bitplane[:, 1:] ^ bitplane[:, :7]
-        row_result= bitplane[1:,:]^bitplane[:7,:]
+        row_result = bitplane[1:, :] ^ bitplane[:7, :]
 
         counter += np.count_nonzero(column_result)
         counter += np.count_nonzero(row_result)
@@ -323,8 +323,8 @@ class ImageEngine(BaseEngine):
 
             # Baca metadata
             metadata_frame = list(image_flatten_view[:metadata_len] & 1)
-            is_random = metadata_frame.pop() == 1
             is_encrypted = metadata_frame.pop() == 1
+            is_random = metadata_frame.pop() == 1
             secret_file_len, secret_file_ext = FileUtil.extract_metadata(metadata_frame)
 
             extract_file_path = extract_file_path + '.' + secret_file_ext
