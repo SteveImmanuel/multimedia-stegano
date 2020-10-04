@@ -268,3 +268,7 @@ dmypy.json
 # End of https://www.toptal.com/developers/gitignore/api/python,linux,code,pycharm
 
 .idea
+
+test_result
+test_data/cover/*
+!test_data/cover/.gitkeep
