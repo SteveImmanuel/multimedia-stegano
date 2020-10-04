@@ -15,7 +15,7 @@ message_paths = [f'{mtype}_{msize}.{mtype}' for mtype in message_type for msize 
 
 COVER_DIR = 'test_data/cover'
 cover_type = ['audio']  #TODO: add image and video cover name, same as in the test_data/cover
-cover_ext = {'audio': 'wav', 'video': 'avi', 'image': 'png'}
+cover_ext = {'audio': 'wav', 'video': 'avi', 'image_png': 'png', 'image_bmp': 'bmp'}
 cover_paths = [f'{ctype}.{cover_ext[ctype]}' for ctype in cover_type]
 
 if os.path.exists('test_result'):
