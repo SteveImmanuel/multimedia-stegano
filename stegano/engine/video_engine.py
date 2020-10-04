@@ -129,11 +129,9 @@ class VideoEngine(BaseEngine):
 
     @staticmethod
     def conceal(file_in_path: str, message_file_path: str, file_out_path: str, encryption_key: str,
-                config: List[Union[str, float]]) -> None:
+                config: List[Union[str, float]]) -> (str, float):
         def psnr(original, edited):
             mse = np.mean((original - edited)**2)
-            if mse == 0:
-                return 100
             return 20 * np.log10(255 / np.sqrt(mse))
 
         is_encrypt, is_frame_seq, is_pixel_seq = VideoEngine.parse_config(config)
@@ -198,7 +196,9 @@ class VideoEngine(BaseEngine):
                             location, video_shape)[1:]] = (frame_byte & 0xFE) | metadata_bit
 
                 pixel_frame_location = pixel_location_in_video[0]
+                altered = False
                 while pixel_frame_location == current_video_frame:
+                    altered = True
                     byte_location_in_message, bit_location_in_byte = divmod(bit_idx_in_message, 8)
                     message_handle.seek(byte_location_in_message)
                     message_byte = message_handle.read(1)  # read 1 byte
@@ -220,7 +220,8 @@ class VideoEngine(BaseEngine):
 
                 video_writer.writeFrame(frame)
                 current_video_frame += 1
-                list_of_psnr.append(psnr(original_frame, frame))
+                if altered:
+                    list_of_psnr.append(psnr(original_frame, frame))
 
         video_reader.close() # close reader
         video_writer.close()  # close the writer
