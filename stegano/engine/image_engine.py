@@ -57,7 +57,7 @@ class ImageEngine(BaseEngine):
 
         if is_lsb:
             max_file_size = int(np.prod(image.shape))
-            metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+            metadata_len = FileUtil.get_metadata_len(max_file_size) + 2
 
             return (max_file_size - metadata_len) // 8
         else:
@@ -172,10 +172,12 @@ class ImageEngine(BaseEngine):
             max_file_size = int(np.prod(image_shape))
             metadata = FileUtil.gen_metadata(secret_file_len, max_file_size, secret_file_extension)
 
-            metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+            metadata_len = FileUtil.get_metadata_len(max_file_size) + 2
 
             # Insert metadata
             metadata.append(1 if is_random else 0)
+            metadata.append(1 if is_encrypted else 0)
+
             for i in range(metadata_len):
                 image_flatten_view[i] = (image_flatten_view[i] & 254) | metadata[i]
 
@@ -217,11 +219,10 @@ class ImageEngine(BaseEngine):
             metadata_len = FileUtil.get_metadata_len(max_message_size)
             metadata_len += 2 + metadata_conjugate_list_len  # 2 binary option
 
-            max_file_size = max_message_size - metadata_len
-
-            metadata = FileUtil.gen_metadata(secret_file_len, max_file_size, secret_file_extension)
+            metadata = \
+                FileUtil.gen_metadata(secret_file_len, max_message_size, secret_file_extension)
             metadata.append(is_random)
-            metadata.append(is_encrypted)  # TODO is_encrypted
+            metadata.append(is_encrypted)
 
             noise_index = np.where(complexity > complexity_threshold)
             noise_index_arr = np.array(noise_index)
@@ -251,8 +252,12 @@ class ImageEngine(BaseEngine):
                 cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane] = data
 
             metadata_arr = np.array(metadata)
-            metadata_list = np.array_split(metadata_arr, math.ceil(len(metadata_arr) / 63))
-            for (row, col, channel, plane), data in zip(metadata_block_index_arr, metadata_list):
+
+            for idx, (row, col, channel, plane) in enumerate(metadata_block_index_arr):
+                data = metadata_arr[:63]
+                metadata_arr = metadata_arr[63:]
+
+                print(row, col, channel, plane, data)
                 data = np.pad(data, (0, 64 - len(data)))
                 data = np.reshape(data, (8, 8))
 
@@ -264,6 +269,9 @@ class ImageEngine(BaseEngine):
                 left_idx = col * 8
 
                 cgc_bit_plane[top_idx:top_idx + 8, left_idx:left_idx + 8, channel, plane] = data
+
+                if len(metadata_arr) == 0:
+                    break
 
             new_cgc_image = ImageEngine._bitplane_to_normal(cgc_bit_plane)
             image = ImageEngine._gray_to_binary(new_cgc_image)
@@ -294,14 +302,17 @@ class ImageEngine(BaseEngine):
 
         if is_lsb:
             max_file_size = int(np.prod(image_shape))
-            metadata_len = FileUtil.get_metadata_len(max_file_size) + 1
+            metadata_len = FileUtil.get_metadata_len(max_file_size) + 2
 
             # Baca metadata
             metadata_frame = list(image_flatten_view[:metadata_len] & 1)
             is_random = metadata_frame.pop() == 1
+            is_encrypted = metadata_frame.pop() == 1
             secret_file_len, secret_file_ext = FileUtil.extract_metadata(metadata_frame)
 
-            output_handle = open(extract_file_path + '.' + secret_file_ext, 'wb')
+            extract_file_path = extract_file_path + '.' + secret_file_ext
+
+            output_handle = open(extract_file_path, 'wb')
 
             # Buat sequence
             if is_random:
@@ -326,8 +337,6 @@ class ImageEngine(BaseEngine):
                     temp_byte.clear()
 
             output_handle.close()
-
-            return extract_file_path + '.' + secret_file_ext
         else:
             complexity_threshold = config[2]
 
@@ -354,7 +363,7 @@ class ImageEngine(BaseEngine):
             metadata_block_index_arr = noise_index_arr[:metadata_block_len]
             noise_index_arr = noise_index_arr[metadata_block_len:]
 
-            metadata = np.array([], dtype=np.uint8)
+            metadata = []
             for row, col, channel, plane in metadata_block_index_arr:
                 top_idx = row * 8
                 left_idx = col * 8
@@ -364,13 +373,19 @@ class ImageEngine(BaseEngine):
                 if (bitplane.ravel()[-1] == 1):
                     bitplane = ImageEngine._conjugate(bitplane)
 
-                metadata = np.append(metadata, (bitplane.ravel()[:63]))
+                print(row, col, channel, plane, bitplane)
+                print()
 
+                metadata.append(bitplane.ravel()[:63])
+
+            metadata = np.concatenate(metadata).ravel()
             metadata = metadata[:metadata_len]
             core_metadata = metadata[:metadata_core_len]
             conjugate_map = metadata[metadata_core_len + 2:]
 
+            print(core_metadata)
             message_size, message_extension = FileUtil.extract_metadata(list(core_metadata))
+            print(message_size, message_extension)
 
             extract_file_path = extract_file_path + '.' + message_extension
 
@@ -409,14 +424,14 @@ class ImageEngine(BaseEngine):
 
             output_handle.close()
 
-            if is_encrypted:
-                out_path = ImageEngine.decrypt(extract_file_path, encryption_key)
-            else:
-                out_path = extract_file_path
+        if is_encrypted:
+            out_path = ImageEngine.decrypt(extract_file_path, encryption_key)
+        else:
+            out_path = extract_file_path
 
-            FileUtil.move_file(out_path, extract_file_path)
+        FileUtil.move_file(out_path, extract_file_path)
 
-            return extract_file_path
+        return extract_file_path
 
 
 if __name__ == '__main__':
