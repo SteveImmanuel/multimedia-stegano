@@ -1,3 +1,4 @@
+import time
 from os import path
 from typing import Union, Type
 
@@ -146,6 +147,7 @@ class ConcealTab(QWidget):
         self._loading_dialog.exec()
 
     def _load_worker_function(self, engine, file_input, config) -> (str, float):
+        time.sleep(0.5)
         result = engine.get_max_message(file_input, config)
         return str(result), 0.0
 
