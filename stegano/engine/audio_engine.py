@@ -6,13 +6,12 @@ import subprocess
 from typing import List, Union
 
 from stegano.engine import BaseEngine
+from stegano.engine.constants import *
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
 from stegano.gui.config_param import RadioParam, ConfigParam
 
 FRAME_SIZE = 500000
-CONCEAL_RANDOM = 'conc_rand'
-CONCEAL_SEQ = 'conc_seq'
 
 
 class AudioEngine(BaseEngine):

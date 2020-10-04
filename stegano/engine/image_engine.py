@@ -7,15 +7,9 @@ import numpy as np
 from imageio import imread, imwrite
 
 from stegano.engine import BaseEngine
+from stegano.engine.constants import *
 from stegano.gui.config_param import RadioParam, ConfigParam, FloatParam
 from stegano.util import RandomUtil, FileUtil
-
-CONCEAL_LSB = 'conc_lsb'
-CONCEAL_BPCS = 'conc_bpcs'
-CONCEAL_RANDOM = 'conc_random'
-CONCEAL_SEQ = 'conc_seq'
-ENCRYPT_ON = 'enc_on'
-ENCRYPT_OFF = 'enc_off'
 
 
 class ImageEngine(BaseEngine):
@@ -164,11 +158,11 @@ class ImageEngine(BaseEngine):
 
     @staticmethod
     def conceal(
-            file_in_path: str,
-            secret_file_path: str,
-            file_out_path: str,
-            encryption_key: str,
-            config: List[Union[str, bool, float]],
+        file_in_path: str,
+        secret_file_path: str,
+        file_out_path: str,
+        encryption_key: str,
+        config: List[Union[str, bool, float]],
     ) -> (str, float):
         is_encrypted = config[0]
         is_lsb = config[1] == CONCEAL_LSB
@@ -300,17 +294,17 @@ class ImageEngine(BaseEngine):
         imwrite(file_out_path + file_in_extension, image, file_in_extension)
         secret_file_handle.close()
 
-        mse = np.mean((original_image - image) ** 2)
+        mse = np.mean((original_image - image)**2)
         psnr = 20 * np.log10(255 / np.sqrt(mse))
 
         return file_out_path + file_in_extension, psnr
 
     @staticmethod
     def extract(
-            file_in_path: str,
-            extract_file_path: str,
-            encryption_key: str,
-            config: List[Union[str, float, bool]],
+        file_in_path: str,
+        extract_file_path: str,
+        encryption_key: str,
+        config: List[Union[str, float, bool]],
     ) -> str:
         is_lsb = config[1] == CONCEAL_LSB
 

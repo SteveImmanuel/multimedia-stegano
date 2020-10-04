@@ -8,14 +8,10 @@ import numpy as np
 import skvideo.io
 
 from stegano.engine.base_engine import BaseEngine
+from stegano.engine.constants import *
 from stegano.gui.config_param import ConfigParam, RadioParam
 from stegano.util.file_util import FileUtil
 from stegano.util.random_util import RandomUtil
-
-FRAME_RANDOM = 'f_rand'
-FRAME_SEQ = 'f_seq'
-PIXEL_RANDOM = 'p_rand'
-PIXEL_SEQ = 'p_seq'
 
 
 class VideoEngine(BaseEngine):
