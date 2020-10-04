@@ -24,6 +24,7 @@ class ConcealTab(QWidget):
         self._state_input_loaded = False
         self._state_message_loaded = False
         self._state_output_path = ''
+        self._state_max_message = 0
 
         self._setup_ui()
 
@@ -64,7 +65,7 @@ class ConcealTab(QWidget):
         self._check_requirement()
 
     def _on_config_changed(self):
-        self._check_requirement()
+        self._calculate_max_msg()
 
     def _on_input_changed(self):
         self._state_engine_type = None
@@ -93,8 +94,7 @@ class ConcealTab(QWidget):
             return
 
         # Input file and engine exists, get file info
-        max_message = self._state_engine.get_max_message(self._file_input_box.path_input.text(),
-                                                         self._config_box.config[1])
+        max_message = self._state_max_message
         self._summary_box.set_file_detail(self._state_engine_type.value, max_message)
 
         # Checking message file
@@ -126,11 +126,39 @@ class ConcealTab(QWidget):
         if self._state_engine_type is not None:
             self._state_engine = EngineFactory.get_engine_class(self._state_engine_type)
             self._config_box.set_engine_option(self._state_engine.get_conceal_option())
+
+            self._calculate_max_msg()
         else:
             self._config_box.set_engine_option([])
 
+            self._state_input_loaded = True
+            self._check_requirement()
+
+    def _calculate_max_msg(self):
+        worker = Worker(
+            lambda: self._load_worker_function(self._state_engine,
+                                               self._file_input_box.path_input.text(),
+                                               self._config_box.config[1])
+        )
+        worker.signal.success.connect(self._on_input_load_success)
+        worker.signal.error.connect(self._on_input_load_error)
+        QThreadPool.globalInstance().start(worker)
+        self._loading_dialog.exec()
+
+    def _load_worker_function(self, engine, file_input, config) -> (str, float):
+        result = engine.get_max_message(file_input, config)
+        return str(result), 0.0
+
+    def _on_input_load_success(self, max_size: str, _: float):
+        self._loading_dialog.close()
+        self._state_max_message = int(max_size)
         self._state_input_loaded = True
         self._check_requirement()
+
+    def _on_input_load_error(self, error_msg: str):
+        self._loading_dialog.close()
+        error_dialog = MessageDialog('Error', error_msg, self, True)
+        error_dialog.exec()
 
     def _on_conceal(self):
         config = self._config_box.config
